@@ -51,6 +51,13 @@ private :
     float                   m_radius;
 	float					m_velocity_x;
 	float					m_velocity_z;
+    float distance(CSphere& ball)
+    {
+        float dx = center_x - ball.center_x;
+        float dz = center_z - ball.center_z;
+
+        return sqrt(dx * dx + dz * dz);
+    }
 
 public:
     CSphere(void)
@@ -101,14 +108,28 @@ public:
 	
     bool hasIntersected(CSphere& ball) 
 	{
-		// Insert your code here.
-
-		return false;
+        return distance(ball) < getRadius() + ball.getRadius();
 	}
 	
 	void hitBy(CSphere& ball) 
 	{ 
-		// Insert your code here.
+        if (hasIntersected(ball)) {
+            float x_velocity = ball.m_velocity_x - m_velocity_x;
+            float z_velocity = ball.m_velocity_z - m_velocity_z;
+            float dx = center_x - ball.center_x;
+            float dz = center_z - ball.center_z;
+            float dot_product = dx * x_velocity + dz * z_velocity;
+            if (dot_product > 0) {
+                float collision_scale = dot_product / (dx * dx + dz * dz);
+                float x_collision = dx * collision_scale;
+                float z_collision = dz * collision_scale;
+
+                m_velocity_x += x_collision;
+                m_velocity_z += z_collision;
+                ball.m_velocity_x -= x_collision;
+                ball.m_velocity_z -= z_collision;
+            }
+        }
 	}
 
 	void ballUpdate(float timeDiff) 
