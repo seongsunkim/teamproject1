@@ -45,6 +45,187 @@ D3DXMATRIX g_mProj;
 // CSphere class definition
 // -----------------------------------------------------------------------------
 
+class CSphere2 {
+protected:
+    float center_x, center_y, center_z;
+    float m_radius;
+    float m_velocity_x;
+    float m_velocity_z;
+    float distance(CSphere2& ball) {
+        float dx = center_x - ball.center_x;
+        float dz = center_z - ball.center_z;
+
+        return sqrt(dx * dx + dz * dz);
+    }
+
+
+public:
+    CSphere2(void)
+    {
+        D3DXMatrixIdentity(&m_mLocal);
+        ZeroMemory(&m_mtrl, sizeof(m_mtrl));
+        m_radius = 0;
+        m_velocity_x = 0;
+        m_velocity_z = 0;
+        m_pSphereMesh = NULL;
+    }
+    ~CSphere2(void) {}
+
+public:
+    bool create(IDirect3DDevice9* pDevice, D3DXCOLOR color = d3d::WHITE)
+    {
+        if (NULL == pDevice)
+            return false;
+
+        m_mtrl.Ambient = color;
+        m_mtrl.Diffuse = color;
+        m_mtrl.Specular = color;
+        m_mtrl.Emissive = d3d::BLACK;
+        m_mtrl.Power = 5.0f;
+
+        if (FAILED(D3DXCreateSphere(pDevice, getRadius(), 50, 50, &m_pSphereMesh, NULL)))
+            return false;
+        return true;
+    }
+
+    void destroy(void)
+    {
+        if (m_pSphereMesh != NULL) {
+            m_pSphereMesh->Release();
+            m_pSphereMesh = NULL;
+        }
+    }
+
+    void draw(IDirect3DDevice9* pDevice, const D3DXMATRIX& mWorld)
+    {
+        if (NULL == pDevice)
+            return;
+        pDevice->SetTransform(D3DTS_WORLD, &mWorld);
+        pDevice->MultiplyTransform(D3DTS_WORLD, &m_mLocal);
+        pDevice->SetMaterial(&m_mtrl);
+        m_pSphereMesh->DrawSubset(0);
+    }
+
+    bool hasIntersected(CSphere2& ball)
+    {
+        return distance(ball) < getRadius() + ball.getRadius();
+    }
+
+    virtual void hitBy(CSphere2& ball);
+
+    virtual void ballUpdate(float timeDiff);
+
+    virtual boolean isRemoving();
+
+    double getVelocity_X() { return this->m_velocity_x; }
+    double getVelocity_Z() { return this->m_velocity_z; }
+
+    void setPower(double vx, double vz)
+    {
+        this->m_velocity_x = vx;
+        this->m_velocity_z = vz;
+    }
+
+    void setCenter(float x, float y, float z)
+    {
+        D3DXMATRIX m;
+        center_x = x;	center_y = y;	center_z = z;
+        D3DXMatrixTranslation(&m, x, y, z);
+        setLocalTransform(m);
+    }
+
+    float getRadius(void)  const { return (float)(M_RADIUS); }
+    const D3DXMATRIX& getLocalTransform(void) const { return m_mLocal; }
+    void setLocalTransform(const D3DXMATRIX& mLocal) { m_mLocal = mLocal; }
+    D3DXVECTOR3 getCenter(void) const
+    {
+        D3DXVECTOR3 org(center_x, center_y, center_z);
+        return org;
+    }
+
+private:
+    D3DXMATRIX              m_mLocal;
+    D3DMATERIAL9            m_mtrl;
+    ID3DXMesh* m_pSphereMesh;
+};
+
+class Bullet : CSphere2 {
+public:
+    Bullet(Life& life, Paddle& paddle) {
+
+    }
+    virtual void hitBy(CSphere2& ball) {
+
+    }
+
+    virtual void ballUpdate(CSphere2& ball) {
+
+    }
+
+    virtual boolean isRemoving() {
+        return false;
+    }
+};
+
+class Paddle : CSphere2 {
+public:
+    virtual void hitBy(CSphere2& ball) {
+
+    }
+
+    virtual void ballUpdate(CSphere2& ball) {
+
+    }
+
+    virtual boolean isRemoving() {
+        return false;
+    }
+};
+
+class Block : CSphere2 {
+public:
+    Block(Point& point) {
+
+    }
+    virtual void hitBy(CSphere2& ball) {
+
+    }
+
+    virtual void ballUpdate(CSphere2& ball) {
+
+    }
+
+    virtual boolean isRemoving() {
+        return false;
+    }
+};
+
+class Life {
+public:
+    void decrease() {
+
+    }
+
+    int getLife() {
+        return 3;
+    }
+
+    boolean isDead() {
+        return false;
+    }
+};
+
+class Point {
+public:
+    void increase() {
+
+    }
+
+    int getPoint() {
+        return 0;
+    }
+};
+
 class CSphere {
 private :
 	float					center_x, center_y, center_z;
