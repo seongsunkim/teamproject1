@@ -164,6 +164,22 @@ public:
     }
 };
 
+
+class Paddle : CSphere2 {
+public:
+    virtual void hitBy(CSphere2& ball) {
+
+    }
+
+    virtual void ballUpdate(CSphere2& ball) {
+
+    }
+
+    virtual boolean isRemoving() {
+        return false;
+    }
+};
+
 class Bullet : CSphere2 {
 public:
     Bullet(Life& life, Paddle& paddle) {
@@ -182,8 +198,23 @@ public:
     }
 };
 
-class Paddle : CSphere2 {
+
+class Point {
 public:
+    void increase() {
+
+    }
+
+    int getPoint() {
+        return 0;
+    }
+};
+
+class Block : CSphere2 {
+public:
+    Block(Point& point) {
+
+    }
     virtual void hitBy(CSphere2& ball) {
 
     }
@@ -194,52 +225,6 @@ public:
 
     virtual boolean isRemoving() {
         return false;
-    }
-};
-
-class Point {
-public:
-    void increase() {
-
-    }
-    virtual void hitBy(CSphere2& ball) {
-
-    int getPoint() {
-        return 0;
-    }
-
-    virtual void ballUpdate(CSphere2& ball) {
-
-    }
-
-    virtual boolean isRemoving() {
-        return false;
-    }
-};
-
-class Life {
-public:
-    void decrease() {
-
-    }
-
-    int getLife() {
-        return 3;
-    }
-
-    boolean isDead() {
-        return false;
-    }
-};
-
-class Point {
-public:
-    void increase() {
-
-    }
-
-    int getPoint() {
-        return 0;
     }
 };
 
@@ -634,7 +619,7 @@ private:
 // -----------------------------------------------------------------------------
 CWall	g_legoPlane;
 CWall	g_legowall[4];
-CSphere	g_sphere[4];
+vector<CSphere> g_sphere;
 CSphere	g_target_blueball;
 CLight	g_light;
 
@@ -674,9 +659,11 @@ bool Setup()
 
 	// create four balls and set the position
 	for (i=0;i<4;i++) {
-		if (false == g_sphere[i].create(Device, sphereColor[i])) return false;
-		g_sphere[i].setCenter(spherePos[i][0], (float)M_RADIUS , spherePos[i][1]);
-		g_sphere[i].setPower(0,0);
+        CSphere s;
+		if (false == s.create(Device, sphereColor[i])) return false;
+		s.setCenter(spherePos[i][0], (float)M_RADIUS , spherePos[i][1]);
+		s.setPower(0,0);
+        g_sphere.push_back(s);
 	}
 	
 	// create blue ball for set direction
