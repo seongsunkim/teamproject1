@@ -149,6 +149,21 @@ private:
     ID3DXMesh* m_pSphereMesh;
 };
 
+class Life {
+public:
+    void decrease() {
+
+    }
+
+    int getLife() {
+        return 3;
+    }
+
+    boolean isDead() {
+        return false;
+    }
+};
+
 class Bullet : CSphere2 {
 public:
     Bullet(Life& life, Paddle& paddle) {
@@ -182,13 +197,15 @@ public:
     }
 };
 
-class Block : CSphere2 {
+class Point {
 public:
-    Block(Point& point) {
+    void increase() {
 
     }
     virtual void hitBy(CSphere2& ball) {
 
+    int getPoint() {
+        return 0;
     }
 
     virtual void ballUpdate(CSphere2& ball) {
