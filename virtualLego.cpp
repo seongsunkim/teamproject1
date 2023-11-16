@@ -111,11 +111,11 @@ public:
         return distance(ball) < getRadius() + ball.getRadius();
     }
 
-    virtual void hitBy(CSphere2& ball);
+    virtual void hitBy(CSphere2& ball) = 0;
 
-    virtual void ballUpdate(float timeDiff);
+    virtual void ballUpdate(float timeDiff) = 0;
 
-    virtual boolean isRemoving();
+    virtual boolean isRemoving() = 0;
 
     double getVelocity_X() { return this->m_velocity_x; }
     double getVelocity_Z() { return this->m_velocity_z; }
@@ -165,13 +165,13 @@ public:
 };
 
 
-class Paddle : CSphere2 {
+class Paddle : public CSphere2 {
 public:
     virtual void hitBy(CSphere2& ball) {
 
     }
 
-    virtual void ballUpdate(CSphere2& ball) {
+    virtual void ballUpdate(float timeDiff) {
 
     }
 
@@ -180,7 +180,7 @@ public:
     }
 };
 
-class Bullet : CSphere2 {
+class Bullet : public CSphere2 {
 public:
     Bullet(Life& life, Paddle& paddle) {
 
@@ -189,7 +189,7 @@ public:
 
     }
 
-    virtual void ballUpdate(CSphere2& ball) {
+    virtual void ballUpdate(float timeDiff) {
 
     }
 
@@ -210,7 +210,7 @@ public:
     }
 };
 
-class Block : CSphere2 {
+class Block : public CSphere2 {
 public:
     Block(Point& point) {
 
@@ -219,7 +219,7 @@ public:
 
     }
 
-    virtual void ballUpdate(CSphere2& ball) {
+    virtual void ballUpdate(float timeDiff) {
 
     }
 
@@ -488,6 +488,34 @@ public:
         return collisionX && collisionZ && collisionY;
     }
 
+    bool hasIntersected(CSphere2& ball) {
+        D3DXVECTOR3 ballCenter = ball.getCenter();
+        float ballRadius = ball.getRadius();
+
+        // 벽의 위치 및 치수를 얻기
+        D3DXVECTOR3 wallCenter(m_x, 0.0f, m_z);  // 벽은 Y=0, 즉 XZ평면에 있다. 공도 마찬가지로 XZ평면에 있음
+        //m_x:벽의 중심 X좌표
+        //m_x:벽의 중심 Z좌표
+        //ex)  (3,0.5) -> 벽이 3,0,5의 위치에 있다 => 벽의 위치는 
+
+        //m_width, m_depth, m_height -> 벽의 가로, 깊이, 높이
+
+        // 3D 공간에서 충돌을 확인
+        bool collisionX = (ballCenter.x + ballRadius >= wallCenter.x - m_width / 2) &&
+            (ballCenter.x - ballRadius <= wallCenter.x + m_width / 2);
+        //벽의 X 범위 내에 공이 위치하는지 판단하는 알고리즘
+
+        bool collisionZ = (ballCenter.z + ballRadius >= wallCenter.z - m_depth / 2) &&
+            (ballCenter.z - ballRadius <= wallCenter.z + m_depth / 2);
+        //같은 원리
+
+        bool collisionY = (ballCenter.y + ballRadius >= wallCenter.y - m_height / 2) &&
+            (ballCenter.y - ballRadius <= wallCenter.y + m_height / 2);
+        //같은 원리
+
+        return collisionX && collisionZ && collisionY;
+    }
+
     void hitBy(CSphere& ball) {
         if (hasIntersected(ball)) {
             // 벽에 부딪혔을 때 벽의 법선벡터로 공이 벽에 입사하는 반사각으로 공을 반사
@@ -502,6 +530,19 @@ public:
         }
     }
 
+    void hitBy(CSphere2& ball) {
+        if (hasIntersected(ball)) {
+            // 벽에 부딪혔을 때 벽의 법선벡터로 공이 벽에 입사하는 반사각으로 공을 반사
+            D3DXVECTOR3 wallNormal(0.0f, 1.0f, 0.0f); // 이를위한 수직벡터, 벽은 XZ 평면에 있음
+
+            // 법선 벡터를 사용한 속도 계산
+            D3DXVECTOR3 incidentVelocity(ball.getVelocity_X(), 0.0f, ball.getVelocity_Z());
+            D3DXVECTOR3 reflectedVelocity = incidentVelocity - 2.0f * D3DXVec3Dot(&incidentVelocity, &wallNormal) * wallNormal;
+
+            //공의 속도 다시 설정
+            ball.setPower(reflectedVelocity.x, reflectedVelocity.z);
+        }
+    }
 
 	
 	void setPosition(float x, float y, float z)
@@ -620,8 +661,11 @@ private:
 CWall	g_legoPlane;
 CWall	g_legowall[4];
 vector<CSphere> g_sphere;
+vector<CSphere2*> g_sphere2;
 CSphere	g_target_blueball;
 CLight	g_light;
+Point g_point;
+Life g_life;
 
 double g_camera_pos[3] = {0.0, 5.0, -8.0};
 
@@ -665,10 +709,26 @@ bool Setup()
 		s.setPower(0,0);
         g_sphere.push_back(s);
 	}
-	
-	// create blue ball for set direction
-    if (false == g_target_blueball.create(Device, d3d::BLUE)) return false;
-	g_target_blueball.setCenter(.0f, (float)M_RADIUS , .0f);
+
+    Paddle* paddle = new Paddle();
+    if (false == paddle->create(Device, d3d::WHITE)) return false;
+    paddle->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
+    paddle->setPower(0, 0);
+    g_sphere2.push_back(paddle);
+
+    for (i = 1;i < 3;i++) {
+        Block* block = new Block(g_point);
+        if (false == block->create(Device, d3d::YELLOW)) return false;
+        block->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
+        block->setPower(0, 0);
+        g_sphere2.push_back(block);
+    }
+
+    Bullet* bullet = new Bullet(g_life, *paddle);
+    if (false == bullet->create(Device, d3d::RED)) return false;
+    bullet->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
+    bullet->setPower(0, 0);
+    g_sphere2.push_back(bullet);
 	
 	// light setting 
     D3DLIGHT9 lit;
@@ -719,45 +779,43 @@ void Cleanup(void)
 
 // timeDelta represents the time between the current image frame and the last image frame.
 // the distance of moving balls should be "velocity * timeDelta"
-bool Display(float timeDelta)
-{
-	int i=0;
-	int j = 0;
+bool Display(float timeDelta) {
+    int i = 0;
+    int j = 0;
 
 
-	if( Device )
-	{
-		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00afafaf, 1.0f, 0);
-		Device->BeginScene();
-		
-		// update the position of each ball. during update, check whether each ball hit by walls.
-		for( i = 0; i < 4; i++) {
-			g_sphere[i].ballUpdate(timeDelta);
-			for(j = 0; j < 4; j++){ g_legowall[i].hitBy(g_sphere[j]); }
-		}
+    if (Device)
+    {
+        Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00afafaf, 1.0f, 0);
+        Device->BeginScene();
 
-		// check whether any two balls hit together and update the direction of balls
-		for(i = 0 ;i < 4; i++){
-			for(j = 0 ; j < 4; j++) {
-				if(i >= j) {continue;}
-				g_sphere[i].hitBy(g_sphere[j]);
-			}
-		}
+        // update the position of each ball. during update, check whether each ball hit by walls.
+        for (i = 0; i < 4; i++) {
+            g_sphere2[i]->ballUpdate(timeDelta);
+            for (j = 0; j < 4; j++) { g_legowall[i].hitBy(*g_sphere2[j]); }
+        }
 
-		// draw plane, walls, and spheres
-		g_legoPlane.draw(Device, g_mWorld);
-		for (i=0;i<4;i++) 	{
-			g_legowall[i].draw(Device, g_mWorld);
-			g_sphere[i].draw(Device, g_mWorld);
-		}
-		g_target_blueball.draw(Device, g_mWorld);
+        // check whether any two balls hit together and update the direction of balls
+        for (i = 0;i < 4; i++) {
+            for (j = 0; j < 4; j++) {
+                if (i >= j) { continue; }
+                g_sphere2[i]->hitBy(*g_sphere2[j]);
+            }
+        }
+
+        // draw plane, walls, and spheres
+        g_legoPlane.draw(Device, g_mWorld);
+        for (i = 0;i < 4;i++) {
+            g_legowall[i].draw(Device, g_mWorld);
+            g_sphere2[i]->draw(Device, g_mWorld);
+        }
         g_light.draw(Device);
-		
-		Device->EndScene();
-		Device->Present(0, 0, 0, 0);
-		Device->SetTexture( 0, NULL );
-	}
-	return true;
+
+        Device->EndScene();
+        Device->Present(0, 0, 0, 0);
+        Device->SetTexture(0, NULL);
+    }
+    return true;
 }
 
 LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
