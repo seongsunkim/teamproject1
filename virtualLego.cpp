@@ -821,9 +821,6 @@ bool Display(float timeDelta) {
 LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	static bool wire = false;
-	static bool isReset = true;
-    static int old_x = 0;
-    static int old_y = 0;
     static enum { WORLD_MOVE, LIGHT_MOVE, BLOCK_MOVE } move = WORLD_MOVE;
 	
 	switch( msg ) {
@@ -845,73 +842,8 @@ LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                         (wire ? D3DFILL_WIREFRAME : D3DFILL_SOLID));
                 }
                 break;
-            case VK_SPACE:
-				
-				D3DXVECTOR3 targetpos = g_target_blueball.getCenter();
-				D3DXVECTOR3	whitepos = g_sphere[3].getCenter();
-				double theta = acos(sqrt(pow(targetpos.x - whitepos.x, 2)) / sqrt(pow(targetpos.x - whitepos.x, 2) +
-					pow(targetpos.z - whitepos.z, 2)));		// 기본 1 사분면
-				if (targetpos.z - whitepos.z <= 0 && targetpos.x - whitepos.x >= 0) { theta = -theta; }	//4 사분면
-				if (targetpos.z - whitepos.z >= 0 && targetpos.x - whitepos.x <= 0) { theta = PI - theta; } //2 사분면
-				if (targetpos.z - whitepos.z <= 0 && targetpos.x - whitepos.x <= 0){ theta = PI + theta; } // 3 사분면
-				double distance = sqrt(pow(targetpos.x - whitepos.x, 2) + pow(targetpos.z - whitepos.z, 2));
-				g_sphere[3].setPower(distance * cos(theta), distance * sin(theta));
-
-				break;
-
 			}
 			break;
-        }
-		
-	case WM_MOUSEMOVE:
-        {
-            int new_x = LOWORD(lParam);
-            int new_y = HIWORD(lParam);
-			float dx;
-			float dy;
-			
-            if (LOWORD(wParam) & MK_LBUTTON) {
-				
-                if (isReset) {
-                    isReset = false;
-                } else {
-                    D3DXVECTOR3 vDist;
-                    D3DXVECTOR3 vTrans;
-                    D3DXMATRIX mTrans;
-                    D3DXMATRIX mX;
-                    D3DXMATRIX mY;
-					
-                    switch (move) {
-                    case WORLD_MOVE:
-                        dx = (old_x - new_x) * 0.01f;
-                        dy = (old_y - new_y) * 0.01f;
-                        D3DXMatrixRotationY(&mX, dx);
-                        D3DXMatrixRotationX(&mY, dy);
-                        g_mWorld = g_mWorld * mX * mY;
-						
-                        break;
-                    }
-                }
-				
-                old_x = new_x;
-                old_y = new_y;
-
-            } else {
-                isReset = true;
-				
-				if (LOWORD(wParam) & MK_RBUTTON) {
-					dx = (old_x - new_x);// * 0.01f;
-					dy = (old_y - new_y);// * 0.01f;
-		
-					D3DXVECTOR3 coord3d=g_target_blueball.getCenter();
-					g_target_blueball.setCenter(coord3d.x+dx*(-0.007f),coord3d.y,coord3d.z+dy*0.007f );
-				}
-				old_x = new_x;
-				old_y = new_y;
-				
-                move = WORLD_MOVE;
-            }
-            break;
         }
 	}
 	
