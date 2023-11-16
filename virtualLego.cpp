@@ -45,13 +45,13 @@ D3DXMATRIX g_mProj;
 // CSphere class definition
 // -----------------------------------------------------------------------------
 
-class CSphere2 {
+class CSphere {
 protected:
     float center_x, center_y, center_z;
     float m_radius;
     float m_velocity_x;
     float m_velocity_z;
-    float distance(CSphere2& ball) {
+    float distance(CSphere& ball) {
         float dx = center_x - ball.center_x;
         float dz = center_z - ball.center_z;
 
@@ -60,7 +60,7 @@ protected:
 
 
 public:
-    CSphere2(void)
+    CSphere(void)
     {
         D3DXMatrixIdentity(&m_mLocal);
         ZeroMemory(&m_mtrl, sizeof(m_mtrl));
@@ -69,7 +69,7 @@ public:
         m_velocity_z = 0;
         m_pSphereMesh = NULL;
     }
-    ~CSphere2(void) {}
+    ~CSphere(void) {}
 
 public:
     bool create(IDirect3DDevice9* pDevice, D3DXCOLOR color = d3d::WHITE)
@@ -106,12 +106,12 @@ public:
         m_pSphereMesh->DrawSubset(0);
     }
 
-    bool hasIntersected(CSphere2& ball)
+    bool hasIntersected(CSphere& ball)
     {
         return distance(ball) < getRadius() + ball.getRadius();
     }
 
-    virtual void hitBy(CSphere2& ball) = 0;
+    virtual void hitBy(CSphere& ball) = 0;
 
     virtual void ballUpdate(float timeDiff) = 0;
 
@@ -165,9 +165,9 @@ public:
 };
 
 
-class Paddle : public CSphere2 {
+class Paddle : public CSphere {
 public:
-    virtual void hitBy(CSphere2& ball) {
+    virtual void hitBy(CSphere& ball) {
 
     }
 
@@ -180,12 +180,12 @@ public:
     }
 };
 
-class Bullet : public CSphere2 {
+class Bullet : public CSphere {
 public:
     Bullet(Life& life, Paddle& paddle) {
 
     }
-    virtual void hitBy(CSphere2& ball) {
+    virtual void hitBy(CSphere& ball) {
 
     }
 
@@ -210,12 +210,12 @@ public:
     }
 };
 
-class Block : public CSphere2 {
+class Block : public CSphere {
 public:
     Block(Point& point) {
 
     }
-    virtual void hitBy(CSphere2& ball) {
+    virtual void hitBy(CSphere& ball) {
 
     }
 
@@ -227,177 +227,6 @@ public:
         return false;
     }
 };
-
-class CSphere {
-private :
-	float					center_x, center_y, center_z;
-    float                   m_radius;
-	float					m_velocity_x;
-	float					m_velocity_z;
-    float distance(CSphere& ball)
-    {
-        float dx = center_x - ball.center_x;
-        float dz = center_z - ball.center_z;
-
-        return sqrt(dx * dx + dz * dz);
-    }
-
-public:
-    CSphere(void)
-    {
-        D3DXMatrixIdentity(&m_mLocal);
-        ZeroMemory(&m_mtrl, sizeof(m_mtrl));
-        m_radius = 0;
-		m_velocity_x = 0;
-		m_velocity_z = 0;
-        m_pSphereMesh = NULL;
-    }
-    ~CSphere(void) {}
-
-public:
-    bool create(IDirect3DDevice9* pDevice, D3DXCOLOR color = d3d::WHITE)
-    {
-        if (NULL == pDevice)
-            return false;
-		
-        m_mtrl.Ambient  = color;
-        m_mtrl.Diffuse  = color;
-        m_mtrl.Specular = color;
-        m_mtrl.Emissive = d3d::BLACK;
-        m_mtrl.Power    = 5.0f;
-		
-        if (FAILED(D3DXCreateSphere(pDevice, getRadius(), 50, 50, &m_pSphereMesh, NULL)))
-            return false;
-        return true;
-    }
-	
-    void destroy(void)
-    {
-        if (m_pSphereMesh != NULL) {
-            m_pSphereMesh->Release();
-            m_pSphereMesh = NULL;
-        }
-    }
-
-    void draw(IDirect3DDevice9* pDevice, const D3DXMATRIX& mWorld)
-    {
-        if (NULL == pDevice)
-            return;
-        pDevice->SetTransform(D3DTS_WORLD, &mWorld);
-        pDevice->MultiplyTransform(D3DTS_WORLD, &m_mLocal);
-        pDevice->SetMaterial(&m_mtrl);
-		m_pSphereMesh->DrawSubset(0);
-    }
-	
-    bool hasIntersected(CSphere& ball) 
-	{
-        return distance(ball) < getRadius() + ball.getRadius();
-	}
-	
-	void hitBy(CSphere& ball) 
-	{ 
-        if (hasIntersected(ball)) {
-            float x_velocity = ball.m_velocity_x - m_velocity_x;
-            float z_velocity = ball.m_velocity_z - m_velocity_z;
-            float dx = center_x - ball.center_x;
-            float dz = center_z - ball.center_z;
-            float dot_product = dx * x_velocity + dz * z_velocity;
-            if (dot_product > 0) {
-                float collision_scale = dot_product / (dx * dx + dz * dz);
-                float x_collision = dx * collision_scale;
-                float z_collision = dz * collision_scale;
-
-                m_velocity_x += x_collision;
-                m_velocity_z += z_collision;
-                ball.m_velocity_x -= x_collision;
-                ball.m_velocity_z -= z_collision;
-            }
-        }
-	}
-
-	void ballUpdate(float timeDiff) 
-	{
-		const float TIME_SCALE = 3.3;
-		D3DXVECTOR3 cord = this->getCenter();
-		double vx = abs(this->getVelocity_X());
-		double vz = abs(this->getVelocity_Z());
-
-		if(vx > 0.01 || vz > 0.01)
-		{
-			float tX = cord.x + TIME_SCALE*timeDiff*m_velocity_x;
-			float tZ = cord.z + TIME_SCALE*timeDiff*m_velocity_z;
-
-			//correction of position of ball
-			// Please uncomment this part because this correction of ball position is necessary when a ball collides with a wall
-			/*if(tX >= (4.5 - M_RADIUS))
-				tX = 4.5 - M_RADIUS;
-			else if(tX <=(-4.5 + M_RADIUS))
-				tX = -4.5 + M_RADIUS;
-			else if(tZ <= (-3 + M_RADIUS))
-				tZ = -3 + M_RADIUS;
-			else if(tZ >= (3 - M_RADIUS))
-				tZ = 3 - M_RADIUS;*/
-            if (tX >= (4.5 - M_RADIUS)) {
-                tX = 4.5 - M_RADIUS;
-                m_velocity_x = -m_velocity_x; // 벽에 부딪혔을 때 반사
-            }
-            else if (tX <= (-4.5 + M_RADIUS)) {
-                tX = -4.5 + M_RADIUS;
-                m_velocity_x = -m_velocity_x; // 벽에 부딪혔을 때 반사
-            }
-
-            if (tZ <= (-3 + M_RADIUS)) {
-                tZ = -3 + M_RADIUS;
-                m_velocity_z = -m_velocity_z; // 벽에 부딪혔을 때 반사
-            }
-            else if (tZ >= (3 - M_RADIUS)) {
-                tZ = 3 - M_RADIUS;
-                m_velocity_z = -m_velocity_z; // 벽에 부딪혔을 때 반사
-            }
-			
-			this->setCenter(tX, cord.y, tZ);
-		}
-		else { this->setPower(0,0);}
-		//this->setPower(this->getVelocity_X() * DECREASE_RATE, this->getVelocity_Z() * DECREASE_RATE);
-		double rate = 1 -  (1 - DECREASE_RATE)*timeDiff * 400;
-		if(rate < 0 )
-			rate = 0;
-		this->setPower(getVelocity_X() * rate, getVelocity_Z() * rate);
-	}
-
-	double getVelocity_X() { return this->m_velocity_x;	}
-	double getVelocity_Z() { return this->m_velocity_z; }
-
-	void setPower(double vx, double vz)
-	{
-		this->m_velocity_x = vx;
-		this->m_velocity_z = vz;
-	}
-
-	void setCenter(float x, float y, float z)
-	{
-		D3DXMATRIX m;
-		center_x=x;	center_y=y;	center_z=z;
-		D3DXMatrixTranslation(&m, x, y, z);
-		setLocalTransform(m);
-	}
-	
-	float getRadius(void)  const { return (float)(M_RADIUS);  }
-    const D3DXMATRIX& getLocalTransform(void) const { return m_mLocal; }
-    void setLocalTransform(const D3DXMATRIX& mLocal) { m_mLocal = mLocal; }
-    D3DXVECTOR3 getCenter(void) const
-    {
-        D3DXVECTOR3 org(center_x, center_y, center_z);
-        return org;
-    }
-	
-private:
-    D3DXMATRIX              m_mLocal;
-    D3DMATERIAL9            m_mtrl;
-    ID3DXMesh*              m_pSphereMesh;
-	
-};
-
 
 
 // -----------------------------------------------------------------------------
@@ -459,7 +288,7 @@ public:
         pDevice->SetMaterial(&m_mtrl);
 		m_pBoundMesh->DrawSubset(0);
     }
-	
+
     bool hasIntersected(CSphere& ball) {
         D3DXVECTOR3 ballCenter = ball.getCenter();
         float ballRadius = ball.getRadius();
@@ -488,49 +317,7 @@ public:
         return collisionX && collisionZ && collisionY;
     }
 
-    bool hasIntersected(CSphere2& ball) {
-        D3DXVECTOR3 ballCenter = ball.getCenter();
-        float ballRadius = ball.getRadius();
-
-        // 벽의 위치 및 치수를 얻기
-        D3DXVECTOR3 wallCenter(m_x, 0.0f, m_z);  // 벽은 Y=0, 즉 XZ평면에 있다. 공도 마찬가지로 XZ평면에 있음
-        //m_x:벽의 중심 X좌표
-        //m_x:벽의 중심 Z좌표
-        //ex)  (3,0.5) -> 벽이 3,0,5의 위치에 있다 => 벽의 위치는 
-
-        //m_width, m_depth, m_height -> 벽의 가로, 깊이, 높이
-
-        // 3D 공간에서 충돌을 확인
-        bool collisionX = (ballCenter.x + ballRadius >= wallCenter.x - m_width / 2) &&
-            (ballCenter.x - ballRadius <= wallCenter.x + m_width / 2);
-        //벽의 X 범위 내에 공이 위치하는지 판단하는 알고리즘
-
-        bool collisionZ = (ballCenter.z + ballRadius >= wallCenter.z - m_depth / 2) &&
-            (ballCenter.z - ballRadius <= wallCenter.z + m_depth / 2);
-        //같은 원리
-
-        bool collisionY = (ballCenter.y + ballRadius >= wallCenter.y - m_height / 2) &&
-            (ballCenter.y - ballRadius <= wallCenter.y + m_height / 2);
-        //같은 원리
-
-        return collisionX && collisionZ && collisionY;
-    }
-
     void hitBy(CSphere& ball) {
-        if (hasIntersected(ball)) {
-            // 벽에 부딪혔을 때 벽의 법선벡터로 공이 벽에 입사하는 반사각으로 공을 반사
-            D3DXVECTOR3 wallNormal(0.0f, 1.0f, 0.0f); // 이를위한 수직벡터, 벽은 XZ 평면에 있음
-
-            // 법선 벡터를 사용한 속도 계산
-            D3DXVECTOR3 incidentVelocity(ball.getVelocity_X(), 0.0f, ball.getVelocity_Z());
-            D3DXVECTOR3 reflectedVelocity = incidentVelocity - 2.0f * D3DXVec3Dot(&incidentVelocity, &wallNormal) * wallNormal;
-
-            //공의 속도 다시 설정
-            ball.setPower(reflectedVelocity.x, reflectedVelocity.z);
-        }
-    }
-
-    void hitBy(CSphere2& ball) {
         if (hasIntersected(ball)) {
             // 벽에 부딪혔을 때 벽의 법선벡터로 공이 벽에 입사하는 반사각으로 공을 반사
             D3DXVECTOR3 wallNormal(0.0f, 1.0f, 0.0f); // 이를위한 수직벡터, 벽은 XZ 평면에 있음
@@ -660,9 +447,7 @@ private:
 // -----------------------------------------------------------------------------
 CWall	g_legoPlane;
 CWall	g_legowall[4];
-vector<CSphere> g_sphere;
-vector<CSphere2*> g_sphere2;
-CSphere	g_target_blueball;
+vector<CSphere*> g_sphere2;
 CLight	g_light;
 Point g_point;
 Life g_life;
@@ -681,7 +466,7 @@ void destroyAllLegoBlock(void)
 // initialization
 bool Setup()
 {
-	int i;
+	int i = 0;
 	
     D3DXMatrixIdentity(&g_mWorld);
     D3DXMatrixIdentity(&g_mView);
@@ -700,15 +485,6 @@ bool Setup()
 	g_legowall[2].setPosition(4.56f, 0.12f, 0.0f);
 	if (false == g_legowall[3].create(Device, -1, -1, 0.12f, 0.3f, 6.24f, d3d::DARKRED)) return false;
 	g_legowall[3].setPosition(-4.56f, 0.12f, 0.0f);
-
-	// create four balls and set the position
-	for (i=0;i<4;i++) {
-        CSphere s;
-		if (false == s.create(Device, sphereColor[i])) return false;
-		s.setCenter(spherePos[i][0], (float)M_RADIUS , spherePos[i][1]);
-		s.setPower(0,0);
-        g_sphere.push_back(s);
-	}
 
     Paddle* paddle = new Paddle();
     if (false == paddle->create(Device, d3d::WHITE)) return false;
