@@ -170,18 +170,27 @@ public:
 
 
 class Paddle : public CSphere {
+private:
+	float mouseZ = 0;
 public:
-	virtual void hitBy(CSphere& ball) {
+
+    virtual void hitBy(CSphere& ball) {
 
 	}
 
 	virtual void ballUpdate(float timeDiff) {
-
+		if (-2.75 <= mouseZ && mouseZ <= 2.75) {
+			setCenter(center_x, center_y, mouseZ);
+		}
 	}
 
-	virtual boolean isRemoving() {
-		return false;
-	}
+    virtual boolean isRemoving() {
+        return false;
+    }
+
+    void mouseMoved(float z) {
+		mouseZ = z;
+    }
 };
 
 class Bullet : public CSphere {
@@ -409,12 +418,11 @@ public:
 			D3DXVECTOR3 incidentVelocity(ball.getVelocity_X(), 0.0f, ball.getVelocity_Z());
 			D3DXVECTOR3 reflectedVelocity = incidentVelocity - 2.0f * D3DXVec3Dot(&incidentVelocity, &wallNormal) * wallNormal;
 
-			//공의 속도 다시 설정
-			ball.setPower(reflectedVelocity.x, reflectedVelocity.z);
-		}
-	}
-
-
+            //공의 속도 다시 설정
+            ball.setPower(reflectedVelocity.x, reflectedVelocity.z);
+        }
+    }
+	
 	void setPosition(float x, float y, float z)
 	{
 		D3DXMATRIX m;
@@ -426,8 +434,6 @@ public:
 	}
 
 	float getHeight(void) const { return M_HEIGHT; }
-
-
 
 private:
 	void setLocalTransform(const D3DXMATRIX& mLocal) { m_mLocal = mLocal; }
@@ -530,10 +536,11 @@ private:
 // -----------------------------------------------------------------------------
 CWall	g_legoPlane;
 CWall	g_legowall[4];
-vector<CSphere*> g_sphere2;
+vector<CSphere*> g_sphere;
 CLight	g_light;
 Point g_point;
 Life g_life;
+Paddle* g_paddle;
 
 double g_camera_pos[3] = { 0.0, 5.0, -8.0 };
 
@@ -569,25 +576,25 @@ bool Setup()
 	if (false == g_legowall[3].create(Device, -1, -1, 0.12f, 0.3f, 6.24f, d3d::DARKRED)) return false;
 	g_legowall[3].setPosition(-4.56f, 0.12f, 0.0f);
 
-	Paddle* paddle = new Paddle();
-	if (false == paddle->create(Device, d3d::WHITE)) return false;
-	paddle->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
-	paddle->setPower(0, 0);
-	g_sphere2.push_back(paddle);
+    g_paddle = new Paddle();
+    if (false == g_paddle->create(Device, d3d::WHITE)) return false;
+	g_paddle->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
+	g_paddle->setPower(0, 0);
+    g_sphere.push_back(g_paddle);
 
 	for (i = 1;i < 3;i++) {
 		Block* block = new Block(g_point);
 		if (false == block->create(Device, d3d::YELLOW)) return false;
 		block->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
 		block->setPower(0, 0);
-		g_sphere2.push_back(block);
+		g_sphere.push_back(block);
 	}
 
-	Bullet* bullet = new Bullet(g_life, *paddle);
+	Bullet* bullet = new Bullet(g_life, *g_paddle);
 	if (false == bullet->create(Device, d3d::RED)) return false;
 	bullet->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
 	bullet->setPower(0, 0);
-	g_sphere2.push_back(bullet);
+	g_sphere.push_back(bullet);
 
 	// light setting 
 	D3DLIGHT9 lit;
@@ -650,15 +657,15 @@ bool Display(float timeDelta) {
 
 		// update the position of each ball. during update, check whether each ball hit by walls.
 		for (i = 0; i < 4; i++) {
-			g_sphere2[i]->ballUpdate(timeDelta);
-			for (j = 0; j < 4; j++) { g_legowall[i].hitBy(*g_sphere2[j]); }
+			g_sphere[i]->ballUpdate(timeDelta);
+			for (j = 0; j < 4; j++) { g_legowall[i].hitBy(*g_sphere[j]); }
 		}
 
 		// check whether any two balls hit together and update the direction of balls
 		for (i = 0;i < 4; i++) {
 			for (j = 0; j < 4; j++) {
-				if (i >= j) { continue; }
-				g_sphere2[i]->hitBy(*g_sphere2[j]);
+				if (i == j) { continue; }
+				g_sphere[i]->hitBy(*g_sphere[j]);
 			}
 		}
 
@@ -666,7 +673,7 @@ bool Display(float timeDelta) {
 		g_legoPlane.draw(Device, g_mWorld);
 		for (i = 0;i < 4;i++) {
 			g_legowall[i].draw(Device, g_mWorld);
-			g_sphere2[i]->draw(Device, g_mWorld);
+			g_sphere[i]->draw(Device, g_mWorld);
 		}
 		g_light.draw(Device);
 
@@ -681,6 +688,8 @@ LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	static bool wire = false;
 	static enum { WORLD_MOVE, LIGHT_MOVE, BLOCK_MOVE } move = WORLD_MOVE;
+	static int old_x = 0;
+	static int old_y = 0;
 
 	switch (msg) {
 	case WM_DESTROY:
@@ -689,21 +698,36 @@ LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 	case WM_KEYDOWN:
-	{
-		switch (wParam) {
-		case VK_ESCAPE:
-			::DestroyWindow(hwnd);
-			break;
-		case VK_RETURN:
-			if (NULL != Device) {
-				wire = !wire;
-				Device->SetRenderState(D3DRS_FILLMODE,
-					(wire ? D3DFILL_WIREFRAME : D3DFILL_SOLID));
+        {
+            switch (wParam) {
+            case VK_ESCAPE:
+				::DestroyWindow(hwnd);
+                break;
+            case VK_RETURN:
+                if (NULL != Device) {
+                    wire = !wire;
+                    Device->SetRenderState(D3DRS_FILLMODE,
+                        (wire ? D3DFILL_WIREFRAME : D3DFILL_SOLID));
+                }
+                break;
 			}
 			break;
-		}
-		break;
-	}
+        }
+    case WM_MOUSEMOVE:
+        {
+			int new_x = LOWORD(lParam);
+			int new_y = HIWORD(lParam);
+			float dx;
+			float dy;
+
+			dx = old_x - new_x;
+			dy = old_y - new_y;
+			if (LOWORD(wParam) && MK_LBUTTON) {
+				g_paddle->mouseMoved(g_paddle->getCenter().z + dx * (0.007f));
+			}
+			old_x = new_x;
+			old_y = new_y;
+        }
 	}
 
 	return ::DefWindowProc(hwnd, msg, wParam, lParam);
