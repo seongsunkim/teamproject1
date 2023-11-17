@@ -214,6 +214,10 @@ public:
 			}
 		}
 	}
+	
+	void shootPressed() {
+
+	}
 
 	void ballUpdate(float timeDiff)//현재 bullet의 상태 업데이트
 	{
