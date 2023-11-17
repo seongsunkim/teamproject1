@@ -662,10 +662,21 @@ bool Display(float timeDelta) {
 		}
 
 		// check whether any two balls hit together and update the direction of balls
-		for (i = 0;i < 4; i++) {
-			for (j = 0; j < 4; j++) {
+		for (i = 0;i < g_sphere.size(); i++) {
+			for (j = 0; j < g_sphere.size(); j++) {
 				if (i == j) { continue; }
 				g_sphere[i]->hitBy(*g_sphere[j]);
+			}
+		}
+
+		for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
+			CSphere* s = *it;
+			if (s->isRemoving()) {
+				it = g_sphere.erase(it);
+				delete s;
+			}
+			else {
+				it++;
 			}
 		}
 
