@@ -26,6 +26,8 @@ const int Height = 768;
 // There are four balls
 // initialize the position (coordinate) of each ball (ball0 ~ ball3)
 const float spherePos[4][2] = { {-2.7f,0} , {+2.4f,0} , {3.3f,0} , {-2.7f,-0.9f} };
+
+//Bullet들의 위치 설정
 // initialize the color of each ball (ball0 ~ ball3)
 const D3DXCOLOR sphereColor[4] = { d3d::RED, d3d::RED, d3d::YELLOW, d3d::WHITE };
 
@@ -170,67 +172,88 @@ private:
 	Paddle paddle;
 
 public:
-	Bullet(Life& life, Paddle& paddle) : life(life), paddle(paddle) {};
-
-	void hitBy(CSphere2& ball) // block, paddle이 인자로 들어옴
-	{
-		if (hasIntersected(ball)) {
-
-
-
-		}
+	Bullet(Life& life, Paddle& paddle) : life(life), paddle(paddle) {
+		this->setCenter(paddle.getCenter());
+			//수정 추가로 필요함
 	}
-}
 
-void ballUpdate(float timeDiff)//현재 bullet의 상태 업데이트
-{
-	const float TIME_SCALE = 3.3;
-	D3DXVECTOR3 cord = this->getCenter();
-	double vx = abs(this->getVelocity_X());
-	double vz = abs(this->getVelocity_Z());
+	void hitBy(CSphere2& ball) {
+		//인자가 Paddle일때
+		if (typeid(ball) == typeid(Paddle)) {
+			float x_velocity = ball.m_velocity_x - m_velocity_x;
+			float z_velocity = ball.m_velocity_z - m_velocity_z;
+			float dx = center_x - ball.center_x;
+			float dz = center_z - ball.center_z;
+			float dot_product = dx * x_velocity + dz * z_velocity;
+			if (dot_product > 0) {
+				float collision_scale = dot_product / (dx * dx + dz * dz);
+				float x_collision = dx * collision_scale;
+				float z_collision = dz * collision_scale;
 
-	if (vx > 0.01 || vz > 0.01)
-	{
-		float tX = cord.x + TIME_SCALE * timeDiff * m_velocity_x;
-		float tZ = cord.z + TIME_SCALE * timeDiff * m_velocity_z;
-
-		if (tX >= (4.5 - M_RADIUS)) {
-			tX = 4.5 - M_RADIUS;
-			m_velocity_x = -m_velocity_x;
-		}
-		else if (tX <= (-4.5 + M_RADIUS)) {
-			tX = -4.5 + M_RADIUS;
-			m_velocity_x = -m_velocity_x;
-		}
-
-		if (tZ <= (-3 + M_RADIUS)) {
-			tZ = -3 + M_RADIUS;
-			m_velocity_z = -m_velocity_z;
-		}
-		else if (tZ >= (3 - M_RADIUS)) {
-			tZ = 3 - M_RADIUS;
-			m_velocity_z = -m_velocity_z;
+				m_velocity_x += x_collision;
+				m_velocity_z += z_collision;
+				ball.m_velocity_x -= x_collision;
+				ball.m_velocity_z -= z_collision;
+				//Csphere 코드 재활용
+			}
+			//인자가 Block일때
+			else {
+				ball.setPower(0, 0);
+				ball.setCenter(-1000, -1000, -1000);
+			}//화면에서 없어지게														  
 		}
 
-		this->setCenter(tX, cord.y, tZ);
+		void ballUpdate(float timeDiff)//현재 bullet의 상태 업데이트
+		{
+			const float TIME_SCALE = 3.3;
+			D3DXVECTOR3 cord = this->getCenter();
+			double vx = abs(this->getVelocity_X());
+			double vz = abs(this->getVelocity_Z());
+
+			if (vx > 0.01 || vz > 0.01)
+			{
+				float tX = cord.x + TIME_SCALE * timeDiff * m_velocity_x;
+				float tZ = cord.z + TIME_SCALE * timeDiff * m_velocity_z;
+
+				if (tX >= (4.5 - M_RADIUS)) {
+					tX = 4.5 - M_RADIUS;
+					m_velocity_x = -m_velocity_x;
+				}
+				else if (tX <= (-4.5 + M_RADIUS)) {
+					tX = -4.5 + M_RADIUS;
+					m_velocity_x = -m_velocity_x;
+				}
+
+				if (tZ <= (-3 + M_RADIUS)) {
+					tZ = -3 + M_RADIUS;
+					m_velocity_z = -m_velocity_z;
+				}
+				else if (tZ >= (3 - M_RADIUS)) {
+					tZ = 3 - M_RADIUS;
+					m_velocity_z = -m_velocity_z;
+				}
+
+				this->setCenter(tX, cord.y, tZ);
+			}
+			else { this->setPower(0, 0); }
+			//this->setPower(this->getVelocity_X() * DECREASE_RATE, this->getVelocity_Z() * DECREASE_RATE);
+			double rate = 1 - (1 - DECREASE_RATE) * timeDiff * 400;
+			if (rate < 0)
+				rate = 0;
+			this->setPower(getVelocity_X() * rate, getVelocity_Z() * rate);
+		}
+		//Csphere에서 가져옴
+
+		bool isRemoving() {
+			return false;
+		}//bullet은 공이 없어지지 않으므로 항상 false
 	}
-	else { this->setPower(0, 0); }
-	//this->setPower(this->getVelocity_X() * DECREASE_RATE, this->getVelocity_Z() * DECREASE_RATE);
-	double rate = 1 - (1 - DECREASE_RATE) * timeDiff * 400;
-	if (rate < 0)
-		rate = 0;
-	this->setPower(getVelocity_X() * rate, getVelocity_Z() * rate);
-}
-//Csphere에서 가져옴
-
-bool isRemoving() {
-	return false;
-}//bullet은 공이 없어지지 않으므로 항상 false => 이 함수는 없어도 될듯
 };
 
 class Block : CSphere2 {
 private:
 	bool isRemoved = false;
+	Point point;
 
 public:
 	Block(Point& point) : point(point) {};
@@ -259,8 +282,12 @@ public:
 
 	void ballUpdate(float timeDiff) {
 		if (isRemoved()) {
+			/*this->setPower(0.0);
+			this->setPosition(-1000, -1000);*/
+			point.increase();
+			//포인트 증가
 		}
-		//화면에서 안보이게 하기
+		//bullet에서 작업한  block이 사라지는 것을 여기서 실행
 	}
 
 	bool isRemoving() {
@@ -289,6 +316,8 @@ public:
 		else
 			isDead = true;
 
+		//isDead()가 호출되면 그 게임 세트는 종료
+
 		return isDead;
 	}
 };
@@ -297,7 +326,7 @@ class Point {
 private:
 	int pointCount;
 public:
-	Point() {pointCount = 0;}
+	Point() { pointCount = 0; }
 	void increase() {
 		pointCount++;
 	}
@@ -745,6 +774,7 @@ bool Setup()
 	}
 
 	// create blue ball for set direction
+	//Paddle
 	if (false == g_target_blueball.create(Device, d3d::BLUE)) return false;
 	g_target_blueball.setCenter(.0f, (float)M_RADIUS, .0f);
 
