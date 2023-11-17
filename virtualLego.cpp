@@ -57,8 +57,6 @@ protected:
 
 		return sqrt(dx * dx + dz * dz);
 	}
-	friend class Bullet;
-
 
 public:
 	CSphere(void)
@@ -199,10 +197,10 @@ public:
 
 	void hitBy(CSphere& ball) {
 		if (hasIntersected(ball)) {
-			float x_velocity = ball.m_velocity_x - m_velocity_x;
-			float z_velocity = ball.m_velocity_z - m_velocity_z;
-			float dx = center_x - ball.center_x;
-			float dz = center_z - ball.center_z;
+			float x_velocity = ball.getVelocity_X() - m_velocity_x;
+			float z_velocity = ball.getVelocity_Z() - m_velocity_z;
+			float dx = center_x - ball.getCenter().x;
+			float dz = center_z - ball.getCenter().z;
 			float dot_product = dx * x_velocity + dz * z_velocity;
 			if (dot_product > 0) {
 				float collision_scale = dot_product / (dx * dx + dz * dz);
@@ -211,8 +209,7 @@ public:
 
 				m_velocity_x += x_collision;
 				m_velocity_z += z_collision;
-				ball.m_velocity_x -= x_collision;
-				ball.m_velocity_z -= z_collision;
+				ball.setPower(ball.getVelocity_X() - x_collision, ball.getVelocity_Z() - z_collision);
 				//Csphere 코드 재활용
 			}
 		}
