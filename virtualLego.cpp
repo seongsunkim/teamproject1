@@ -171,7 +171,7 @@ public:
 		return lifeCount <= 0;
 	}
 
-	void display(){
+	void displayLife(){
 
 	}
 };
@@ -182,7 +182,22 @@ private:
 public:
 
     virtual void hitBy(CSphere& ball) {
+		if (hasIntersected(ball)) {
+			float x_velocity = ball.getVelocity_X() - m_velocity_x;
+			float z_velocity = ball.getVelocity_Z() - m_velocity_z;
+			float dx = center_x - ball.getCenter().x;
+			float dz = center_z - ball.getCenter().z;
+			float dot_product = dx * x_velocity + dz * z_velocity;
+			if (dot_product > 0) {
+				float collision_scale = dot_product / (dx * dx + dz * dz);
+				float x_collision = dx * collision_scale;
+				float z_collision = dz * collision_scale;
 
+				m_velocity_x += x_collision;
+				m_velocity_z += z_collision;
+				ball.setPower(ball.getVelocity_X() - x_collision, ball.getVelocity_Z() - z_collision);
+			}
+		}//Bullet이 인자로 들어옴
 	}
 
 	virtual void ballUpdate(float timeDiff) {
@@ -210,13 +225,14 @@ private:
 	Life life;
 	Paddle paddle;
 	BulletState currentState;
+	boolean isSpace;
 
 public:
-	Bullet(Life& life, Paddle& paddle) : life(life), paddle(paddle) { currentState = Waiting; }
+	Bullet(Life& life, Paddle& paddle) : life(life), paddle(paddle) { currentState = Waiting; isSpace = true; }
 
 	void hitBy(CSphere& ball) {	//block과 paddle이 인자로 들어옴
-		if (hasIntersected(ball)) {
-			/*float x_velocity = ball.getVelocity_X() - m_velocity_x;
+		/*if (hasIntersected(ball)) {
+			float x_velocity = ball.getVelocity_X() - m_velocity_x;
 			float z_velocity = ball.getVelocity_Z() - m_velocity_z;
 			float dx = center_x - ball.getCenter().x;
 			float dz = center_z - ball.getCenter().z;
@@ -228,26 +244,26 @@ public:
 
 				m_velocity_x += x_collision;
 				m_velocity_z += z_collision;
-				ball.setPower(ball.getVelocity_X() - x_collision, ball.getVelocity_Z() - z_collision);*/
-			//}
+				ball.setPower(ball.getVelocity_X() - x_collision, ball.getVelocity_Z() - z_collision);
+			}*/
 		//쓸모없는 코드=>block의 상태변화는 class Block에서 구현했고 paddle의 상태변화는 사용자의 마우스조작으로만 변경됌
-		}
+		//}
 	}
 	void shootPressed() {
 		// 총알 발사 시 InScreen 상태로 전환
-
+		isSpace = false;
+		setPower(1.0, 5.0);
 
 		currentState = InScreen;
-
-		setPower(0.0, 1.0);
 	}
 
 	void ballUpdate(float timeDiff)//현재 bullet의 상태 업데이트
 	{
 		if (currentState == Waiting) {
 			// Waiting 상태에서 paddle 위치 따라가기
-			this->setPower(paddle.getVelocity_X(), paddle.getVelocity_Z());
-			this->setCenter(paddle.getCenter().x, paddle.getCenter().y, paddle.getCenter().z);
+			setPower(paddle.getVelocity_X(), paddle.getVelocity_Z());
+			// paddle의 바로 위로 위치 설정
+			setCenter(paddle.getCenter().x + getRadius()*2, paddle.getCenter().y, paddle.getCenter().z);
 			
 		}
 		else if (currentState == InScreen) {
@@ -256,40 +272,55 @@ public:
 			double vx = abs(this->getVelocity_X());
 			double vz = abs(this->getVelocity_Z());
 
-			if (vx > 0.01 || vz > 0.01) {
+			if (vx > 0.01 || vz > 0.01)
+			{
 				float tX = cord.x + TIME_SCALE * timeDiff * m_velocity_x;
 				float tZ = cord.z + TIME_SCALE * timeDiff * m_velocity_z;
 
-				// 벽을 넘어가면 Waiting 상태로 전환
-				if (tX >= (4.5 - M_RADIUS) || tX <= (-4.5 + M_RADIUS) ||
-					tZ <= (-3 + M_RADIUS) || tZ >= (3 - M_RADIUS)) {
-					currentState = Waiting;
+				if (tX >= (4.5 - M_RADIUS)) {
+					tX = 4.5 - M_RADIUS;
+					m_velocity_x = -m_velocity_x; // 벽에 부딪혔을 때 반사
+				}
+				else if (tX <= (-4.5 + M_RADIUS)) {
+					//tX = -4.5 + M_RADIUS;
+					//m_velocity_x = -m_velocity_x; // 벽에 부딪혔을 때 반사
 
+					currentState = Waiting;
+					isSpace = true;
+					//벽의 X축의 마이너스 방향으로 벗어나면 Waiting 상태로 변경됌
 					life.decrease();
 				}
-				else {
-					this->setCenter(tX, cord.y, tZ);
+
+				if (tZ <= (-3 + M_RADIUS)) {
+					tZ = -3 + M_RADIUS;
+					m_velocity_z = -m_velocity_z; // 벽에 부딪혔을 때 반사
 				}
+				else if (tZ >= (3 - M_RADIUS)) {
+					tZ = 3 - M_RADIUS;
+					m_velocity_z = -m_velocity_z; // 벽에 부딪혔을 때 반사
+				}
+				this->setCenter(tX, cord.y, tZ);
 			}
-			else {
-				this->setPower(0, 0);
-			}
-			this->setPower(this->getVelocity_X(), this->getVelocity_Z());
+			else { this->setPower(0, 0); }
+			//this->setPower(this->getVelocity_X() * DECREASE_RATE, this->getVelocity_Z() * DECREASE_RATE);
+			/*double rate = 1 - (1 - DECREASE_RATE) * timeDiff * 400;
+			if (rate < 0)
+				rate = 0;
+			this->setPower(getVelocity_X() * rate, getVelocity_Z() * rate);*/
 		}
 		// Csphere에서 가져옴
-		/*double rate = 1 - (1 - DECREASE_RATE) * timeDiff * 400;
-		if (rate < 0)
-			rate = 0;
-		this->setPower(getVelocity_X() * rate, getVelocity_Z() * rate);*/
 		//속도가 느려지는 것 수정함
-
-
 	}
 	//Csphere에서 가져옴
 
 	boolean isRemoving() {
 		return false;
 	}//bullet은 공이 없어지지 않으므로 항상 false
+
+	boolean getIsSpace() {
+		return isSpace;
+	}
+
 };
 
 
@@ -304,7 +335,7 @@ public:
 	int getPoint() {
 		return pointCount;
 	}
-	void display() {
+	void displayPoint() {
 		/*std::wstring pointStr = L"Point: " + std::to_wstring(pointCount);
 		Font::GetInstance()->DrawText(10, 10, pointStr.c_str(), D3DCOLOR_ARGB(255, 255, 255, 255));*/
 	}
@@ -345,6 +376,7 @@ public:
 		if (_isRemoving) {
 			this->setPower(0, 0);
 			this->setCenter(0, 0, 0);
+
 			point.increase();
 			//포인트 증가
 		}
@@ -691,9 +723,13 @@ bool Display(float timeDelta) {
 		Device->BeginScene();
 
 		// update the position of each ball. during update, check whether each ball hit by walls.
+		for (auto& s : g_sphere) {
+			s->ballUpdate(timeDelta);
+		}
 		for (i = 0; i < 4; i++) {
-			g_sphere[i]->ballUpdate(timeDelta);
-			for (j = 0; j < 4; j++) { g_legowall[i].hitBy(*g_sphere[j]); }
+			for (auto& s : g_sphere) {
+				g_legowall[i].hitBy(*s);
+			}
 		}
 
 		// check whether any two balls hit together and update the direction of balls
@@ -717,9 +753,11 @@ bool Display(float timeDelta) {
 
 		// draw plane, walls, and spheres
 		g_legoPlane.draw(Device, g_mWorld);
-		for (i = 0;i < 4;i++) {
+		for (i = 0; i < 4; i++) {
 			g_legowall[i].draw(Device, g_mWorld);
-			g_sphere[i]->draw(Device, g_mWorld);
+		}
+		for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end(); it++) {
+			(*it)->draw(Device, g_mWorld);
 		}
 		g_light.draw(Device);
 
@@ -727,8 +765,8 @@ bool Display(float timeDelta) {
 		Device->Present(0, 0, 0, 0);
 		Device->SetTexture(0, NULL);
 
-		g_point.display();
-		g_life.display();
+		g_point.displayPoint();
+		g_life.displayLife();
 	}
 	return true;
 }
@@ -760,13 +798,11 @@ LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 }
                 break;
 			case VK_SPACE:
+				Bullet* bullet = dynamic_cast<Bullet*>(g_sphere.back());
 				// 스페이스 바를 눌렀을 때 처리
-				if (g_sphere.size() > 0) {
+				if (g_sphere.size() > 0 && bullet->getIsSpace()) {
 					// 가정: 총알은 g_sphere 벡터의 마지막 원소로 가정
-					Bullet* bullet = dynamic_cast<Bullet*>(g_sphere.back());
-					if (bullet) {
-						bullet->shootPressed();
-					}
+					bullet->shootPressed();
 				}
 			}
 
