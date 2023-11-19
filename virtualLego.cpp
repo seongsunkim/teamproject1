@@ -182,22 +182,6 @@ private:
 public:
 
     virtual void hitBy(CSphere& ball) {
-		if (hasIntersected(ball)) {
-			float x_velocity = ball.getVelocity_X() - m_velocity_x;
-			float z_velocity = ball.getVelocity_Z() - m_velocity_z;
-			float dx = center_x - ball.getCenter().x;
-			float dz = center_z - ball.getCenter().z;
-			float dot_product = dx * x_velocity + dz * z_velocity;
-			if (dot_product > 0) {
-				float collision_scale = dot_product / (dx * dx + dz * dz);
-				float x_collision = dx * collision_scale;
-				float z_collision = dz * collision_scale;
-
-				m_velocity_x += x_collision;
-				m_velocity_z += z_collision;
-				ball.setPower(ball.getVelocity_X() - x_collision, ball.getVelocity_Z() - z_collision);
-			}
-		}//Bullet이 인자로 들어옴
 	}
 
 	virtual void ballUpdate(float timeDiff) {
@@ -231,23 +215,14 @@ public:
 	Bullet(Life& life, Paddle& paddle) : life(life), paddle(paddle) { currentState = Waiting; isSpace = true; }
 
 	void hitBy(CSphere& ball) {	//block과 paddle이 인자로 들어옴
-		/*if (hasIntersected(ball)) {
-			float x_velocity = ball.getVelocity_X() - m_velocity_x;
-			float z_velocity = ball.getVelocity_Z() - m_velocity_z;
-			float dx = center_x - ball.getCenter().x;
-			float dz = center_z - ball.getCenter().z;
-			float dot_product = dx * x_velocity + dz * z_velocity;
-			if (dot_product > 0) {
-				float collision_scale = dot_product / (dx * dx + dz * dz);
-				float x_collision = dx * collision_scale;
-				float z_collision = dz * collision_scale;
-
-				m_velocity_x += x_collision;
-				m_velocity_z += z_collision;
-				ball.setPower(ball.getVelocity_X() - x_collision, ball.getVelocity_Z() - z_collision);
-			}*/
-		//쓸모없는 코드=>block의 상태변화는 class Block에서 구현했고 paddle의 상태변화는 사용자의 마우스조작으로만 변경됌
-		//}
+		if (hasIntersected(ball)) {
+			D3DXVECTOR3 dx = ball.getCenter() - getCenter();
+			float d = distance(ball);
+			D3DXVECTOR3 normalized_dx = dx / d;
+			D3DXVECTOR3 v(getVelocity_X(), 0, getVelocity_Z());
+			D3DXVECTOR3 reflected = v - 2.0f * D3DXVec3Dot(&v, &normalized_dx) * normalized_dx;
+			setPower(reflected.x, reflected.z);
+		}
 	}
 	void shootPressed() {
 		// 총알 발사 시 InScreen 상태로 전환
@@ -352,20 +327,14 @@ public:
 	void hitBy(CSphere& ball) // bullet이 인자로 들어옴
 	{
 		if (hasIntersected(ball)) {
-			D3DXVECTOR3 dx = getCenter() - ball.getCenter();
-			float d = distance(ball);
-			D3DXVECTOR3 normalized_dx = dx / d;
-			D3DXVECTOR3 v(ball.getVelocity_X(), 0, ball.getVelocity_Z());
-			D3DXVECTOR3 reflected = v - 2.0f * D3DXVec3Dot(&v, &normalized_dx) * normalized_dx;
-			ball.setPower(reflected.x, reflected.z);
 			_isRemoving = true;
 		}
 	}
 
 	void ballUpdate(float timeDiff) {
 		if (_isRemoving) {
-			this->setPower(0, 0);
-			this->setCenter(0, 0, 0);
+			//this->setPower(0, 0);
+			//this->setCenter(0, 0, 0);
 
 			point.increase();
 			//포인트 증가
