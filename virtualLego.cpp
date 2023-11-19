@@ -220,8 +220,11 @@ public:
 			float d = distance(ball);
 			D3DXVECTOR3 normalized_dx = dx / d;
 			D3DXVECTOR3 v(getVelocity_X(), 0, getVelocity_Z());
-			D3DXVECTOR3 reflected = v - 2.0f * D3DXVec3Dot(&v, &normalized_dx) * normalized_dx;
-			setPower(reflected.x, reflected.z);
+			float dotproduct = D3DXVec3Dot(&v, &normalized_dx);
+			if (dotproduct > 0) {
+				D3DXVECTOR3 reflected = v - 2.0f * dotproduct * normalized_dx;
+				setPower(reflected.x, reflected.z);
+			}
 		}
 	}
 	void shootPressed() {
