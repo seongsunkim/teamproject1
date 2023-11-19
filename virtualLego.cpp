@@ -352,22 +352,12 @@ public:
 	void hitBy(CSphere& ball) // bullet이 인자로 들어옴
 	{
 		if (hasIntersected(ball)) {
-			float x_velocity = ball.getVelocity_X() - m_velocity_x;
-			float z_velocity = ball.getVelocity_Z() - m_velocity_z;
-			float dx = center_x - ball.getCenter().x;
-			float dz = center_z - ball.getCenter().z;
-			float dot_product = dx * x_velocity + dz * z_velocity;
-			if (dot_product > 0) {
-				float collision_scale = dot_product / (dx * dx + dz * dz);
-				float x_collision = dx * collision_scale;
-				float z_collision = dz * collision_scale;
-
-				m_velocity_x += x_collision;
-				m_velocity_z += z_collision;
-				ball.setPower(ball.getVelocity_X() - x_collision, ball.getVelocity_Z() - z_collision);
-				//Csphere 코드 재활용
-				//인자로 들어온 bullet의 상태 변화
-			}
+			D3DXVECTOR3 dx = getCenter() - ball.getCenter();
+			float d = distance(ball);
+			D3DXVECTOR3 normalized_dx = dx / d;
+			D3DXVECTOR3 v(ball.getVelocity_X(), 0, ball.getVelocity_Z());
+			D3DXVECTOR3 reflected = v - 2.0f * D3DXVec3Dot(&v, &normalized_dx) * normalized_dx;
+			ball.setPower(reflected.x, reflected.z);
 			_isRemoving = true;
 		}
 	}
