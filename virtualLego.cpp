@@ -17,7 +17,10 @@
 #include <cstdio>
 #include <cassert>
 
+#include <iostream>
+
 IDirect3DDevice9* Device = NULL;
+
 
 // window size
 const int Width = 1024;
@@ -163,11 +166,15 @@ public:
 		return lifeCount;
 	}//무슨 역할이였지
 
-	bool isDead() {
+	boolean isDead() {
+		cout << "life 다 사용\n";
 		return lifeCount <= 0;
 	}
-};
 
+	void display(){
+
+	}
+};
 
 class Paddle : public CSphere {
 private:
@@ -193,20 +200,23 @@ public:
     }
 };
 
+enum BulletState {
+	Waiting,
+	InScreen
+};// => 초기 상태: Waiting, InScreen 상태에서 bullet이 벽의 범위를 벗어나면 다시 Waiting 상태로 변하게 했음
+
 class Bullet : public CSphere {
 private:
 	Life life;
 	Paddle paddle;
+	BulletState currentState;
 
 public:
-	Bullet(Life& life, Paddle& paddle) : life(life), paddle(paddle) {
-		//this->setCenter(paddle.getCenter());
-		//수정 추가로 필요함
-	}
+	Bullet(Life& life, Paddle& paddle) : life(life), paddle(paddle) { currentState = Waiting; }
 
-	void hitBy(CSphere& ball) {
+	void hitBy(CSphere& ball) {	//block과 paddle이 인자로 들어옴
 		if (hasIntersected(ball)) {
-			float x_velocity = ball.getVelocity_X() - m_velocity_x;
+			/*float x_velocity = ball.getVelocity_X() - m_velocity_x;
 			float z_velocity = ball.getVelocity_Z() - m_velocity_z;
 			float dx = center_x - ball.getCenter().x;
 			float dz = center_z - ball.getCenter().z;
@@ -218,54 +228,62 @@ public:
 
 				m_velocity_x += x_collision;
 				m_velocity_z += z_collision;
-				ball.setPower(ball.getVelocity_X() - x_collision, ball.getVelocity_Z() - z_collision);
-				//Csphere 코드 재활용
-			}
+				ball.setPower(ball.getVelocity_X() - x_collision, ball.getVelocity_Z() - z_collision);*/
+			//}
+		//쓸모없는 코드=>block의 상태변화는 class Block에서 구현했고 paddle의 상태변화는 사용자의 마우스조작으로만 변경됌
 		}
 	}
-	
 	void shootPressed() {
+		// 총알 발사 시 InScreen 상태로 전환
 
+
+		currentState = InScreen;
+
+		setPower(0.0, 1.0);
 	}
 
 	void ballUpdate(float timeDiff)//현재 bullet의 상태 업데이트
 	{
-		const float TIME_SCALE = 3.3;
-		D3DXVECTOR3 cord = this->getCenter();
-		double vx = abs(this->getVelocity_X());
-		double vz = abs(this->getVelocity_Z());
-
-		if (vx > 0.01 || vz > 0.01)
-		{
-			float tX = cord.x + TIME_SCALE * timeDiff * m_velocity_x;
-			float tZ = cord.z + TIME_SCALE * timeDiff * m_velocity_z;
-
-			if (tX >= (4.5 - M_RADIUS)) {
-				tX = 4.5 - M_RADIUS;
-				m_velocity_x = -m_velocity_x;
-			}
-			else if (tX <= (-4.5 + M_RADIUS)) {
-				tX = -4.5 + M_RADIUS;
-				m_velocity_x = -m_velocity_x;
-			}
-
-			if (tZ <= (-3 + M_RADIUS)) {
-				tZ = -3 + M_RADIUS;
-				m_velocity_z = -m_velocity_z;
-			}
-			else if (tZ >= (3 - M_RADIUS)) {
-				tZ = 3 - M_RADIUS;
-				m_velocity_z = -m_velocity_z;
-			}
-
-			this->setCenter(tX, cord.y, tZ);
+		if (currentState == Waiting) {
+			// Waiting 상태에서 paddle 위치 따라가기
+			this->setPower(paddle.getVelocity_X(), paddle.getVelocity_Z());
+			this->setCenter(paddle.getCenter().x, paddle.getCenter().y, paddle.getCenter().z);
+			
 		}
-		else { this->setPower(0, 0); }
-		//this->setPower(this->getVelocity_X() * DECREASE_RATE, this->getVelocity_Z() * DECREASE_RATE);
-		double rate = 1 - (1 - DECREASE_RATE) * timeDiff * 400;
+		else if (currentState == InScreen) {
+			const float TIME_SCALE = 3.3;
+			D3DXVECTOR3 cord = this->getCenter();
+			double vx = abs(this->getVelocity_X());
+			double vz = abs(this->getVelocity_Z());
+
+			if (vx > 0.01 || vz > 0.01) {
+				float tX = cord.x + TIME_SCALE * timeDiff * m_velocity_x;
+				float tZ = cord.z + TIME_SCALE * timeDiff * m_velocity_z;
+
+				// 벽을 넘어가면 Waiting 상태로 전환
+				if (tX >= (4.5 - M_RADIUS) || tX <= (-4.5 + M_RADIUS) ||
+					tZ <= (-3 + M_RADIUS) || tZ >= (3 - M_RADIUS)) {
+					currentState = Waiting;
+
+					life.decrease();
+				}
+				else {
+					this->setCenter(tX, cord.y, tZ);
+				}
+			}
+			else {
+				this->setPower(0, 0);
+			}
+			this->setPower(this->getVelocity_X(), this->getVelocity_Z());
+		}
+		// Csphere에서 가져옴
+		/*double rate = 1 - (1 - DECREASE_RATE) * timeDiff * 400;
 		if (rate < 0)
 			rate = 0;
-		this->setPower(getVelocity_X() * rate, getVelocity_Z() * rate);
+		this->setPower(getVelocity_X() * rate, getVelocity_Z() * rate);*/
+		//속도가 느려지는 것 수정함
+
+
 	}
 	//Csphere에서 가져옴
 
@@ -286,6 +304,10 @@ public:
 	int getPoint() {
 		return pointCount;
 	}
+	void display() {
+		/*std::wstring pointStr = L"Point: " + std::to_wstring(pointCount);
+		Font::GetInstance()->DrawText(10, 10, pointStr.c_str(), D3DCOLOR_ARGB(255, 255, 255, 255));*/
+	}
 };
 
 class Block : public CSphere {
@@ -299,20 +321,33 @@ public:
 	void hitBy(CSphere& ball) // bullet이 인자로 들어옴
 	{
 		if (hasIntersected(ball)) {
-			this->setPower(0, 0);
-			this->setCenter(-1000, -1000, -1000);
+			float x_velocity = ball.getVelocity_X() - m_velocity_x;
+			float z_velocity = ball.getVelocity_Z() - m_velocity_z;
+			float dx = center_x - ball.getCenter().x;
+			float dz = center_z - ball.getCenter().z;
+			float dot_product = dx * x_velocity + dz * z_velocity;
+			if (dot_product > 0) {
+				float collision_scale = dot_product / (dx * dx + dz * dz);
+				float x_collision = dx * collision_scale;
+				float z_collision = dz * collision_scale;
+
+				m_velocity_x += x_collision;
+				m_velocity_z += z_collision;
+				ball.setPower(ball.getVelocity_X() - x_collision, ball.getVelocity_Z() - z_collision);
+				//Csphere 코드 재활용
+				//인자로 들어온 bullet의 상태 변화
+			}
 			_isRemoving = true;
 		}
 	}
 
 	void ballUpdate(float timeDiff) {
 		if (_isRemoving) {
-			/*this->setPower(0.0);
-			this->setPosition(-1000, -1000);*/
+			this->setPower(0, 0);
+			this->setCenter(0, 0, 0);
 			point.increase();
 			//포인트 증가
 		}
-		//bullet에서 작업한  block이 사라지는 것을 여기서 실행
 	}
 
 	boolean isRemoving() {
@@ -691,6 +726,9 @@ bool Display(float timeDelta) {
 		Device->EndScene();
 		Device->Present(0, 0, 0, 0);
 		Device->SetTexture(0, NULL);
+
+		g_point.display();
+		g_life.display();
 	}
 	return true;
 }
@@ -721,7 +759,17 @@ LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                         (wire ? D3DFILL_WIREFRAME : D3DFILL_SOLID));
                 }
                 break;
+			case VK_SPACE:
+				// 스페이스 바를 눌렀을 때 처리
+				if (g_sphere.size() > 0) {
+					// 가정: 총알은 g_sphere 벡터의 마지막 원소로 가정
+					Bullet* bullet = dynamic_cast<Bullet*>(g_sphere.back());
+					if (bullet) {
+						bullet->shootPressed();
+					}
+				}
 			}
+
 			break;
         }
     case WM_MOUSEMOVE:
