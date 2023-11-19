@@ -582,11 +582,32 @@ void destroyAllLegoBlock(void)
 {
 }
 
+bool initializeSpheres() {
+	int i = 0;
+	g_paddle = new Paddle();
+	if (false == g_paddle->create(Device, d3d::WHITE)) return false;
+	g_paddle->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
+	g_paddle->setPower(0, 0);
+	g_sphere.push_back(g_paddle);
+
+	for (int i = 1;i < 3; i++) {
+		Block* block = new Block(g_point);
+		if (false == block->create(Device, d3d::YELLOW)) return false;
+		block->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
+		block->setPower(0, 0);
+		g_sphere.push_back(block);
+	}
+
+	Bullet* bullet = new Bullet(g_life, *g_paddle);
+	if (false == bullet->create(Device, d3d::RED)) return false;
+	bullet->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
+	bullet->setPower(0, 0);
+	g_sphere.push_back(bullet);
+}
+
 // initialization
 bool Setup()
 {
-	int i = 0;
-
 	D3DXMatrixIdentity(&g_mWorld);
 	D3DXMatrixIdentity(&g_mView);
 	D3DXMatrixIdentity(&g_mProj);
@@ -605,25 +626,9 @@ bool Setup()
 	if (false == g_legowall[3].create(Device, -1, -1, 0.12f, 0.3f, 6.24f, d3d::DARKRED)) return false;
 	g_legowall[3].setPosition(-4.56f, 0.12f, 0.0f);
 
-    g_paddle = new Paddle();
-    if (false == g_paddle->create(Device, d3d::WHITE)) return false;
-	g_paddle->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
-	g_paddle->setPower(0, 0);
-    g_sphere.push_back(g_paddle);
-
-	for (i = 1;i < 3;i++) {
-		Block* block = new Block(g_point);
-		if (false == block->create(Device, d3d::YELLOW)) return false;
-		block->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
-		block->setPower(0, 0);
-		g_sphere.push_back(block);
+	if (!initializeSpheres()) {
+		return false;
 	}
-
-	Bullet* bullet = new Bullet(g_life, *g_paddle);
-	if (false == bullet->create(Device, d3d::RED)) return false;
-	bullet->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
-	bullet->setPower(0, 0);
-	g_sphere.push_back(bullet);
 
 	// light setting 
 	D3DLIGHT9 lit;
@@ -729,6 +734,17 @@ bool Display(float timeDelta) {
 
 		g_point.displayPoint();
 		g_life.displayLife();
+
+		if (g_life.isDead()) {
+			for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
+				CSphere* s = *it;
+				it = g_sphere.erase(it);
+				delete s;
+			}
+			g_point = Point();
+			g_life = Life();
+			initializeSpheres();
+		}
 	}
 	return true;
 }
