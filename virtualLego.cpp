@@ -206,8 +206,8 @@ enum BulletState {
 
 class Bullet : public CSphere {
 private:
-	Life life;
-	Paddle paddle;
+	Life& life;
+	Paddle& paddle;
 	BulletState currentState;
 	boolean isSpace;
 
@@ -227,7 +227,7 @@ public:
 	void shootPressed() {
 		// 총알 발사 시 InScreen 상태로 전환
 		isSpace = false;
-		setPower(1.0, 5.0);
+		setPower(2.0, 0.0);
 
 		currentState = InScreen;
 	}
@@ -236,9 +236,9 @@ public:
 	{
 		if (currentState == Waiting) {
 			// Waiting 상태에서 paddle 위치 따라가기
-			setPower(paddle.getVelocity_X(), paddle.getVelocity_Z());
 			// paddle의 바로 위로 위치 설정
-			setCenter(paddle.getCenter().x + getRadius()*2, paddle.getCenter().y, paddle.getCenter().z);
+			D3DXVECTOR3 center = paddle.getCenter();
+			setCenter(center.x + getRadius()*2, center.y, center.z);
 			
 		}
 		else if (currentState == InScreen) {
@@ -319,7 +319,7 @@ public:
 class Block : public CSphere {
 private:
 	bool _isRemoving = false;
-	Point point;
+	Point& point;
 
 public:
 	Block(Point& point) : point(point) {};
@@ -333,8 +333,8 @@ public:
 
 	void ballUpdate(float timeDiff) {
 		if (_isRemoving) {
-			//this->setPower(0, 0);
-			//this->setCenter(0, 0, 0);
+			this->setPower(0, 0);
+			this->setCenter(0, 0, 0);
 
 			point.increase();
 			//포인트 증가
