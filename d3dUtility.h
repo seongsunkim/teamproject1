@@ -118,7 +118,7 @@ namespace d3d
 	struct BoundingSphere
 	{
 		BoundingSphere();
-
+		
 		D3DXVECTOR3 _center;
 		float       _radius;
 	};

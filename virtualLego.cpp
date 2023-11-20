@@ -16,6 +16,8 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cassert>
+#include <d3dx9core.h>
+#include <string>
 
 #include <iostream>
 
@@ -24,7 +26,7 @@ IDirect3DDevice9* Device = NULL;
 
 // window size
 const int Width = 1024;
-const int Height = 768;
+const int Height = 720;
 
 // There are four balls
 // initialize the position (coordinate) of each ball (ball0 ~ ball3)
@@ -156,6 +158,7 @@ class Life {
 public:
 private:
 	int lifeCount;
+	
 
 public:
 	Life() { lifeCount = 3; }
@@ -171,10 +174,6 @@ public:
 		cout << "life 다 사용\n";
 		return lifeCount <= 0;
 	}
-
-	void displayLife(){
-
-	}
 };
 
 class Paddle : public CSphere {
@@ -182,7 +181,7 @@ private:
 	float mouseZ = 0;
 public:
 
-    virtual void hitBy(CSphere& ball) {
+	virtual void hitBy(CSphere& ball) {
 	}
 
 	virtual void ballUpdate(float timeDiff) {
@@ -191,13 +190,13 @@ public:
 		}
 	}
 
-    virtual boolean isRemoving() {
-        return false;
-    }
+	virtual boolean isRemoving() {
+		return false;
+	}
 
-    void mouseMoved(float z) {
+	void mouseMoved(float z) {
 		mouseZ = z;
-    }
+	}
 };
 
 enum BulletState {
@@ -242,8 +241,8 @@ public:
 			// Waiting 상태에서 paddle 위치 따라가기
 			// paddle의 바로 위로 위치 설정
 			D3DXVECTOR3 center = paddle.getCenter();
-			setCenter(center.x + getRadius()*2, center.y, center.z);
-			
+			setCenter(center.x + getRadius() * 2, center.y, center.z);
+
 		}
 		else if (currentState == InScreen) {
 			const float TIME_SCALE = 3.3;
@@ -313,10 +312,6 @@ public:
 	int getPoint() {
 		return pointCount;
 	}
-	void displayPoint() {
-		/*std::wstring pointStr = L"Point: " + std::to_wstring(pointCount);
-		Font::GetInstance()->DrawText(10, 10, pointStr.c_str(), D3DCOLOR_ARGB(255, 255, 255, 255));*/
-	}
 };
 
 class Block : public CSphere {
@@ -335,7 +330,7 @@ public:
 	}
 
 	void ballUpdate(float timeDiff) {
-		if (_isRemoving) {
+		if (isRemoving()) {
 			this->setPower(0, 0);
 			this->setCenter(0, 0, 0);
 
@@ -447,11 +442,11 @@ public:
 			D3DXVECTOR3 incidentVelocity(ball.getVelocity_X(), 0.0f, ball.getVelocity_Z());
 			D3DXVECTOR3 reflectedVelocity = incidentVelocity - 2.0f * D3DXVec3Dot(&incidentVelocity, &wallNormal) * wallNormal;
 
-            //공의 속도 다시 설정
-            ball.setPower(reflectedVelocity.x, reflectedVelocity.z);
-        }
-    }
-	
+			//공의 속도 다시 설정
+			ball.setPower(reflectedVelocity.x, reflectedVelocity.z);
+		}
+	}
+
 	void setPosition(float x, float y, float z)
 	{
 		D3DXMATRIX m;
@@ -570,6 +565,8 @@ CLight	g_light;
 Point g_point;
 Life g_life;
 Paddle* g_paddle;
+ID3DXFont* g_pFont = NULL;
+
 
 double g_camera_pos[3] = { 0.0, 5.0, -8.0 };
 
@@ -577,9 +574,22 @@ double g_camera_pos[3] = { 0.0, 5.0, -8.0 };
 // Functions
 // -----------------------------------------------------------------------------
 
-
 void destroyAllLegoBlock(void)
 {
+}
+
+bool InitFont()
+{
+	if (FAILED(D3DXCreateFontW(Device, 20, 0, FW_BLACK, 1, FALSE,
+		DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+		L"Arial", &g_pFont)))
+	{
+		return false;
+		// 오류 처리
+	}
+
+
+	return true;
 }
 
 bool initializeSpheres() {
@@ -590,7 +600,7 @@ bool initializeSpheres() {
 	g_paddle->setPower(0, 0);
 	g_sphere.push_back(g_paddle);
 
-	for (int i = 1;i < 11; i++) {
+	for (int i = 1; i < 11; i++) {
 		Block* block = new Block(g_point);
 		if (false == block->create(Device, d3d::YELLOW)) return false;
 		block->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
@@ -627,6 +637,10 @@ bool Setup()
 	g_legowall[3].setPosition(-4.56f, 0.12f, 0.0f);
 
 	if (!initializeSpheres()) {
+		return false;
+	}
+
+	if (!InitFont()) {
 		return false;
 	}
 
@@ -674,6 +688,12 @@ void Cleanup(void)
 	}
 	destroyAllLegoBlock();
 	g_light.destroy();
+
+	if (g_pFont != NULL) {
+		g_pFont->Release();
+		g_pFont = NULL;
+	}
+
 }
 
 
@@ -700,7 +720,7 @@ bool Display(float timeDelta) {
 		}
 
 		// check whether any two balls hit together and update the direction of balls
-		for (i = 0;i < g_sphere.size(); i++) {
+		for (i = 0; i < g_sphere.size(); i++) {
 			for (j = 0; j < g_sphere.size(); j++) {
 				if (i == j) { continue; }
 				g_sphere[i]->hitBy(*g_sphere[j]);
@@ -732,10 +752,18 @@ bool Display(float timeDelta) {
 		Device->Present(0, 0, 0, 0);
 		Device->SetTexture(0, NULL);
 
-		g_point.displayPoint();
-		g_life.displayLife();
+		if (g_pFont != NULL) {
+			RECT rect_life = { 10, 10, Width, Height };
+			std::wstring lifeStr = L"Life: " + std::to_wstring(g_life.getLife());
+			g_pFont->DrawTextW(NULL, lifeStr.c_str(), -1, &rect_life, DT_LEFT, d3d::BLACK);
 
-		if (g_life.isDead()) {
+			RECT rect_point = { 10, 10, Width, Height };
+			std::wstring pointStr = L"Point: " + std::to_wstring(g_point.getPoint());
+			g_pFont->DrawTextW(NULL, lifeStr.c_str(), -1, &rect_point, DT_LEFT, d3d::BLACK);
+		}
+		//life 화면에 출력
+
+		if (g_life.isDead() || (g_point.getPoint() == g_sphere.size() - 2)) {
 			for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
 				CSphere* s = *it;
 				it = g_sphere.erase(it);
@@ -763,44 +791,44 @@ LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 	case WM_KEYDOWN:
-        {
-            switch (wParam) {
-            case VK_ESCAPE:
-				::DestroyWindow(hwnd);
-                break;
-            case VK_RETURN:
-                if (NULL != Device) {
-                    wire = !wire;
-                    Device->SetRenderState(D3DRS_FILLMODE,
-                        (wire ? D3DFILL_WIREFRAME : D3DFILL_SOLID));
-                }
-                break;
-			case VK_SPACE:
-				Bullet* bullet = dynamic_cast<Bullet*>(g_sphere.back());
-				// 스페이스 바를 눌렀을 때 처리
-				if (g_sphere.size() > 0 && bullet->getIsSpace()) {
-					// 가정: 총알은 g_sphere 벡터의 마지막 원소로 가정
-					bullet->shootPressed();
-				}
-			}
-
+	{
+		switch (wParam) {
+		case VK_ESCAPE:
+			::DestroyWindow(hwnd);
 			break;
-        }
-    case WM_MOUSEMOVE:
-        {
-			int new_x = LOWORD(lParam);
-			int new_y = HIWORD(lParam);
-			float dx;
-			float dy;
-
-			dx = old_x - new_x;
-			dy = old_y - new_y;
-			if (LOWORD(wParam) && MK_LBUTTON) {
-				g_paddle->mouseMoved(g_paddle->getCenter().z + dx * (0.007f));
+		case VK_RETURN:
+			if (NULL != Device) {
+				wire = !wire;
+				Device->SetRenderState(D3DRS_FILLMODE,
+					(wire ? D3DFILL_WIREFRAME : D3DFILL_SOLID));
 			}
-			old_x = new_x;
-			old_y = new_y;
-        }
+			break;
+		case VK_SPACE:
+			Bullet* bullet = dynamic_cast<Bullet*>(g_sphere.back());
+			// 스페이스 바를 눌렀을 때 처리
+			if (g_sphere.size() > 0 && bullet->getIsSpace()) {
+				// 가정: 총알은 g_sphere 벡터의 마지막 원소로 가정
+				bullet->shootPressed();
+			}
+		}
+
+		break;
+	}
+	case WM_MOUSEMOVE:
+	{
+		int new_x = LOWORD(lParam);
+		int new_y = HIWORD(lParam);
+		float dx;
+		float dy;
+
+		dx = old_x - new_x;
+		dy = old_y - new_y;
+		if (LOWORD(wParam) && MK_LBUTTON) {
+			g_paddle->mouseMoved(g_paddle->getCenter().z + dx * (0.007f));
+		}
+		old_x = new_x;
+		old_y = new_y;
+	}
 	}
 
 	return ::DefWindowProc(hwnd, msg, wParam, lParam);
