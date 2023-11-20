@@ -28,7 +28,8 @@ const int Height = 768;
 
 // There are four balls
 // initialize the position (coordinate) of each ball (ball0 ~ ball3)
-const float spherePos[4][2] = { {-2.7f,0} , {+2.4f,0} , {3.3f,0} , {-2.7f,-0.9f} };
+const float spherePos[12][2] = { {-2.7f,0} , {2.4f,0} , {3.3f,0} , {1.0f, 1.0f}, {-1.0f, -1.0f}, {1.0f,1.5f},{-1.0f,1.5f},{1.0f,-1.5f},{-1.0f,-1.5f}, {1.5f,1.5f}, {-1.5f, -1.5f}, {-2.7f,-0.9f} };
+//첫 번째가 Paddle, 맨 끝이 Bullet
 // initialize the color of each ball (ball0 ~ ball3)
 const D3DXCOLOR sphereColor[4] = { d3d::RED, d3d::RED, d3d::YELLOW, d3d::WHITE };
 
@@ -300,7 +301,6 @@ public:
 	}
 
 };
-
 
 class Point {
 private:
@@ -590,7 +590,7 @@ bool initializeSpheres() {
 	g_paddle->setPower(0, 0);
 	g_sphere.push_back(g_paddle);
 
-	for (int i = 1;i < 3; i++) {
+	for (int i = 1;i < 11; i++) {
 		Block* block = new Block(g_point);
 		if (false == block->create(Device, d3d::YELLOW)) return false;
 		block->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
