@@ -683,7 +683,7 @@ bool initializeSpheres() {
 		block->setPower(0, 0);
 		g_sphere.push_back(block);
 	}
-
+	
 	Bullet* bullet = new Bullet(g_life, *g_paddle);
 	if (false == bullet->create(Device, d3d::RED)) return false;
 	bullet->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
