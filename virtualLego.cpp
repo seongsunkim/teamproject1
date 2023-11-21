@@ -336,13 +336,20 @@ public:
 	void hitBy(CSphere& ball) // bullet이 인자로 들어옴
 	{
 		if (hasIntersected(ball)) {
-			hitCount--;
-			if (hitCount != 0) {
-				setColor();
-			}
-			else {
-				_isRemoving = true;
-				point.increase();
+			D3DXVECTOR3 dx = getCenter() - ball.getCenter();
+			float d = distance(ball);
+			D3DXVECTOR3 normalized_dx = dx / d;
+			D3DXVECTOR3 v(ball.getVelocity_X(), 0, ball.getVelocity_Z());
+			float dotproduct = D3DXVec3Dot(&v, &normalized_dx);
+			if (dotproduct > 0) {
+				hitCount--;
+				if (hitCount != 0) {
+					setColor();
+				}
+				else {
+					_isRemoving = true;
+					point.increase();
+				}
 			}
 		}
 	}
