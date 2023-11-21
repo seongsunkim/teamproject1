@@ -785,6 +785,8 @@ bool Display(float timeDelta) {
 		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00afafaf, 1.0f, 0);
 		Device->BeginScene();
 
+		if (!g_life.isDead()) {
+
 		// update the position of each ball. during update, check whether each ball hit by walls.
 		for (auto& s : g_sphere) {
 			s->ballUpdate(timeDelta);
@@ -835,11 +837,7 @@ bool Display(float timeDelta) {
 		}
 		//life와 point 화면에 출력
 
-		Device->EndScene();
-		Device->Present(0, 0, 0, 0);
-		Device->SetTexture(0, NULL);
-
-		if (g_life.isDead() || (g_point.getPoint() == g_sphere.size() - 2)) {
+			if (g_sphere.size() == 2) {
 			for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
 				CSphere* s = *it;
 				it = g_sphere.erase(it);
@@ -849,6 +847,18 @@ bool Display(float timeDelta) {
 			g_life = Life();
 			initializeSpheres();
 		}
+	}
+		else {
+			if (g_pFont != NULL) {
+				RECT rect_life = { 400, 300, Width, Height };
+				std::wstring endStr = L"  Your final score is " + std::to_wstring(g_point.getPoint()) + L"\n" + L"Press Space to Restart";
+				g_pFont->DrawTextW(NULL, endStr.c_str(), -1, &rect_life, DT_LEFT, d3d::BLACK);
+			}
+		}
+
+		Device->EndScene();
+		Device->Present(0, 0, 0, 0);
+		Device->SetTexture(0, NULL);
 	}
 	return true;
 }
@@ -880,12 +890,24 @@ LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		case VK_SPACE:
+			if (g_life.isDead()) {
+				for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
+					CSphere* s = *it;
+					it = g_sphere.erase(it);
+					delete s;
+				}
+				g_point = Point();
+				g_life = Life();
+				initializeSpheres();
+			}
+			else {
 			Bullet* bullet = dynamic_cast<Bullet*>(g_sphere.back());
 			// 스페이스 바를 눌렀을 때 처리
 			if (g_sphere.size() > 0 && bullet->getIsSpace()) {
 				// 가정: 총알은 g_sphere 벡터의 마지막 원소로 가정
 				bullet->shootPressed();
 			}
+		}
 		}
 
 		break;
