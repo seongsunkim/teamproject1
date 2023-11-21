@@ -33,7 +33,7 @@ const int Height = 720;
 float** spherePos = NULL;
 //첫 번째가 Paddle, 맨 끝이 Bullet
 // initialize the color of each ball (ball0 ~ ball3)
-const D3DXCOLOR sphereColor[4] = { d3d::RED, d3d::RED, d3d::YELLOW, d3d::WHITE};
+const D3DXCOLOR sphereColor[5] = { d3d::RED, d3d::RED, d3d::YELLOW, d3d::WHITE, d3d::CYAN };
 
 // -----------------------------------------------------------------------------
 // Transform matrices
@@ -147,6 +147,15 @@ public:
 		D3DXVECTOR3 org(center_x, center_y, center_z);
 		return org;
 	}
+
+	void setColor(const D3DXCOLOR& color) {
+		m_mtrl.Ambient = color;
+		m_mtrl.Diffuse = color;
+		m_mtrl.Specular = color;
+		m_mtrl.Emissive = d3d::BLACK;
+		m_mtrl.Power = 5.0f;
+	}
+		
 
 private:
 	D3DXMATRIX              m_mLocal;
@@ -319,13 +328,20 @@ private:
 	bool _isRemoving = false;
 	Point& point;
 
+	int hitCount;
+
 public:
 	Block(Point& point) : point(point) {};
 
 	void hitBy(CSphere& ball) // bullet이 인자로 들어옴
 	{
 		if (hasIntersected(ball)) {
-			_isRemoving = true;
+			hitCount--;
+			if (hitCount != 0) {
+				setColor();
+			}
+			else
+				_isRemoving = true;
 		}
 	}
 
@@ -341,6 +357,15 @@ public:
 
 	boolean isRemoving() {
 		return _isRemoving;
+	}
+
+	void setHitCount(int number) {
+		hitCount = number;
+	}
+
+	void setColor() {
+		CSphere::setColor(d3d::YELLOW);
+		
 	}
 };
 
@@ -644,7 +669,16 @@ bool initializeSpheres() {
 
 	for (int i = 1; i < randomRow-1; i++) {
 		Block* block = new Block(g_point);
-		if (false == block->create(Device, d3d::YELLOW)) return false;
+		if (i % 3 == 0) {
+			if (false == block->create(Device, d3d::CYAN)) return false;
+			block->setHitCount(2);
+		}
+		else {
+			if (false == block->create(Device, d3d::YELLOW)) return false;
+			block->setHitCount(1);
+		}
+		//CYAN: 2번 깨야 부셔짐
+		
 		block->setCenter(spherePos[i][0], (float)M_RADIUS	, spherePos[i][1]);
 		block->setPower(0, 0);
 		g_sphere.push_back(block);
