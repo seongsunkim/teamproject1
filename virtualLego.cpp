@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+﻿///////////// ///////////////////////////////////////////////////////////////////
 //
 // File: virtualLego.cpp
 //
@@ -18,11 +18,10 @@
 #include <cassert>
 #include <d3dx9core.h>
 #include <string>
-
+#include <random>
 #include <iostream>
 
 IDirect3DDevice9* Device = NULL;
-
 
 // window size
 const int Width = 1024;
@@ -30,10 +29,11 @@ const int Height = 720;
 
 // There are four balls
 // initialize the position (coordinate) of each ball (ball0 ~ ball3)
-const float spherePos[12][2] = { {-2.7f,0} , {2.4f,0} , {3.3f,0} , {1.0f, 1.0f}, {-1.0f, -1.0f}, {1.0f,1.5f},{-1.0f,1.5f},{1.0f,-1.5f},{-1.0f,-1.5f}, {1.5f,1.5f}, {-1.5f, -1.5f}, {-2.7f,-0.9f} };
+//float spherePos[12][2] = { {-2.7f,0} , {2.4f,0} , {4.0f,-2.5f} , {1.0f, 1.0f}, {-1.0f, -1.0f}, {1.0f,1.5f},{-1.0f,1.5f},{1.0f,-1.5f},{-1.0f,-1.5f}, {1.5f,1.5f}, {-1.5f, -1.5f}, {-2.7f,-0.9f} };
+float** spherePos = NULL;
 //첫 번째가 Paddle, 맨 끝이 Bullet
 // initialize the color of each ball (ball0 ~ ball3)
-const D3DXCOLOR sphereColor[4] = { d3d::RED, d3d::RED, d3d::YELLOW, d3d::WHITE };
+const D3DXCOLOR sphereColor[4] = { d3d::RED, d3d::RED, d3d::YELLOW, d3d::WHITE};
 
 // -----------------------------------------------------------------------------
 // Transform matrices
@@ -566,7 +566,8 @@ Point g_point;
 Life g_life;
 Paddle* g_paddle;
 ID3DXFont* g_pFont = NULL;
-
+random_device rd;
+mt19937 gen(rd());
 
 double g_camera_pos[3] = { 0.0, 5.0, -8.0 };
 
@@ -592,7 +593,48 @@ bool InitFont()
 	return true;
 }
 
+bool isOverlap(float x1, float z1, float x2, float z2) {
+	float distance = std::sqrt(std::pow(x2 - x1, 2) + std::pow(z2 - z1, 2));
+	return distance < 2 * M_RADIUS;
+}
+
 bool initializeSpheres() {
+
+	uniform_int_distribution<int> distributionInt(10, 20);
+	int randomRow = distributionInt(gen);
+	//int randomRow = 12;
+
+	std::uniform_real_distribution<float> distributionX(-1.5f, 4.0f);
+	float randomValueX;
+
+	std::uniform_real_distribution<float> distributionZ(-2.5f, 2.5f);
+	float randomValueZ;
+
+	spherePos = new float* [randomRow];
+	for (int i = 0; i < randomRow; ++i) {
+		spherePos[i] = new float[2]; // 각 행에 2개의 열을 가진 배열 할당
+	}
+
+	/*for (int i = 0; i < randomRow; i++)
+		spherePos[i] = new float[2];*/
+
+	spherePos[0][0] = -2.7f;
+	spherePos[0][1] = 0;
+
+	for (int i = 1; i < randomRow-1; i++) {
+		do {
+			randomValueX = distributionX(gen);
+			randomValueZ = distributionZ(gen);
+		} while (isOverlap(randomValueX, randomValueZ, spherePos[i - 1][0], spherePos[i - 1][1]));
+
+		
+		spherePos[i][0] = randomValueX;
+		spherePos[i][1] = randomValueZ;
+	}
+
+	spherePos[randomRow - 1][0] = -2.7f;
+	spherePos[randomRow - 1][1] = -0.9f;
+
 	int i = 0;
 	g_paddle = new Paddle();
 	if (false == g_paddle->create(Device, d3d::WHITE)) return false;
@@ -600,10 +642,10 @@ bool initializeSpheres() {
 	g_paddle->setPower(0, 0);
 	g_sphere.push_back(g_paddle);
 
-	for (int i = 1; i < 11; i++) {
+	for (int i = 1; i < randomRow-1; i++) {
 		Block* block = new Block(g_point);
 		if (false == block->create(Device, d3d::YELLOW)) return false;
-		block->setCenter(spherePos[i][0], (float)M_RADIUS, spherePos[i][1]);
+		block->setCenter(spherePos[i][0], (float)M_RADIUS	, spherePos[i][1]);
 		block->setPower(0, 0);
 		g_sphere.push_back(block);
 	}
@@ -761,7 +803,7 @@ bool Display(float timeDelta) {
 			std::wstring pointStr = L"Point: " + std::to_wstring(g_point.getPoint());
 			g_pFont->DrawTextW(NULL, lifeStr.c_str(), -1, &rect_point, DT_LEFT, d3d::BLACK);
 		}
-		//life 화면에 출력
+		//life와 point 화면에 출력
 
 		if (g_life.isDead() || (g_point.getPoint() == g_sphere.size() - 2)) {
 			for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
