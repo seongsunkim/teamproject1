@@ -833,11 +833,15 @@ bool Display(float timeDelta) {
 			std::wstring lifeStr = L"Life: " + std::to_wstring(g_life.getLife());
 			g_pFont->DrawTextW(NULL, lifeStr.c_str(), -1, &rect_life, DT_LEFT, d3d::BLACK);
 
-			RECT rect_point = { 10, 10, Width, Height };
+			RECT rect_point = { 10, 30, Width, Height };
 			std::wstring pointStr = L"Point: " + std::to_wstring(g_point.getPoint());
-			g_pFont->DrawTextW(NULL, lifeStr.c_str(), -1, &rect_point, DT_LEFT, d3d::BLACK);
+			g_pFont->DrawTextW(NULL, pointStr.c_str(), -1, &rect_point, DT_LEFT, d3d::BLACK);
 		}
 		//life와 point 화면에 출력
+
+		Device->EndScene();
+		Device->Present(0, 0, 0, 0);
+		Device->SetTexture(0, NULL);
 
 		if (g_life.isDead() || (g_point.getPoint() == g_sphere.size() - 2)) {
 			for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
