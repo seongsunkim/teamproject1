@@ -838,7 +838,7 @@ bool Display(float timeDelta) {
 			for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end(); it++) {
 				(*it)->draw(Device, g_mWorld);
 			}
-			g_light.draw(Device);
+			//g_light.draw(Device);
 
 			if (g_pFont != NULL) {
 				RECT rect_life = { 10, 10, Width, Height };
