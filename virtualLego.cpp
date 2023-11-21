@@ -340,8 +340,11 @@ public:
 			if (hitCount != 0) {
 				setColor();
 			}
-			else
+			else {
 				_isRemoving = true;
+				point.increase();
+				//포인트 증가
+			}
 		}
 	}
 
@@ -349,9 +352,6 @@ public:
 		if (isRemoving()) {
 			this->setPower(0, 0);
 			this->setCenter(0, 0, 0);
-
-			point.increase();
-			//포인트 증가
 		}
 	}
 
@@ -823,10 +823,6 @@ bool Display(float timeDelta) {
 			(*it)->draw(Device, g_mWorld);
 		}
 		g_light.draw(Device);
-
-		Device->EndScene();
-		Device->Present(0, 0, 0, 0);
-		Device->SetTexture(0, NULL);
 
 		if (g_pFont != NULL) {
 			RECT rect_life = { 10, 10, Width, Height };
