@@ -600,7 +600,7 @@ bool isOverlap(float x1, float z1, float x2, float z2) {
 
 bool initializeSpheres() {
 
-	uniform_int_distribution<int> distributionInt(10, 20);
+	uniform_int_distribution<int> distributionInt(15, 30);
 	int randomRow = distributionInt(gen);
 	//int randomRow = 12;
 
