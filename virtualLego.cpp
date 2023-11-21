@@ -340,8 +340,10 @@ public:
 			if (hitCount != 0) {
 				setColor();
 			}
-			else
+			else {
 				_isRemoving = true;
+				point.increase();
+			}
 		}
 	}
 
@@ -349,9 +351,6 @@ public:
 		if (isRemoving()) {
 			this->setPower(0, 0);
 			this->setCenter(0, 0, 0);
-
-			point.increase();
-			//포인트 증가
 		}
 	}
 
@@ -647,12 +646,20 @@ bool initializeSpheres() {
 	spherePos[0][1] = 0;
 
 	for (int i = 1; i < randomRow-1; i++) {
-		do {
+		for (;;) {
 			randomValueX = distributionX(gen);
 			randomValueZ = distributionZ(gen);
-		} while (isOverlap(randomValueX, randomValueZ, spherePos[i - 1][0], spherePos[i - 1][1]));
+			bool overlapExists = false;
+			for (int j = 1; j < i; j++) {
+				if (isOverlap(randomValueX, randomValueZ, spherePos[j][0], spherePos[j][1])) {
+					overlapExists = true;
+					break;
+				}
+			}
+			if (!overlapExists)
+				break;
+		}
 
-		
 		spherePos[i][0] = randomValueX;
 		spherePos[i][1] = randomValueZ;
 	}
@@ -785,70 +792,78 @@ bool Display(float timeDelta) {
 		Device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0x00afafaf, 1.0f, 0);
 		Device->BeginScene();
 
-		// update the position of each ball. during update, check whether each ball hit by walls.
-		for (auto& s : g_sphere) {
-			s->ballUpdate(timeDelta);
-		}
-		for (i = 0; i < 4; i++) {
+		if (!g_life.isDead()) {
+
+			// update the position of each ball. during update, check whether each ball hit by walls.
 			for (auto& s : g_sphere) {
-				g_legowall[i].hitBy(*s);
+				s->ballUpdate(timeDelta);
 			}
-		}
+			for (i = 0; i < 4; i++) {
+				for (auto& s : g_sphere) {
+					g_legowall[i].hitBy(*s);
+				}
+			}
 
-		// check whether any two balls hit together and update the direction of balls
-		for (i = 0; i < g_sphere.size(); i++) {
-			for (j = 0; j < g_sphere.size(); j++) {
-				if (i == j) { continue; }
-				g_sphere[i]->hitBy(*g_sphere[j]);
+			// check whether any two balls hit together and update the direction of balls
+			for (i = 0; i < g_sphere.size(); i++) {
+				for (j = 0; j < g_sphere.size(); j++) {
+					if (i == j) { continue; }
+					g_sphere[i]->hitBy(*g_sphere[j]);
+				}
 			}
-		}
 
-		for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
-			CSphere* s = *it;
-			if (s->isRemoving()) {
-				it = g_sphere.erase(it);
-				delete s;
+			for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
+				CSphere* s = *it;
+				if (s->isRemoving()) {
+					it = g_sphere.erase(it);
+					delete s;
+				}
+				else {
+					it++;
+				}
 			}
-			else {
-				it++;
-			}
-		}
 
-		// draw plane, walls, and spheres
-		g_legoPlane.draw(Device, g_mWorld);
-		for (i = 0; i < 4; i++) {
-			g_legowall[i].draw(Device, g_mWorld);
+			// draw plane, walls, and spheres
+			g_legoPlane.draw(Device, g_mWorld);
+			for (i = 0; i < 4; i++) {
+				g_legowall[i].draw(Device, g_mWorld);
+			}
+			for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end(); it++) {
+				(*it)->draw(Device, g_mWorld);
+			}
+			g_light.draw(Device);
+
+			if (g_pFont != NULL) {
+				RECT rect_life = { 10, 10, Width, Height };
+				std::wstring lifeStr = L"Life: " + std::to_wstring(g_life.getLife());
+				g_pFont->DrawTextW(NULL, lifeStr.c_str(), -1, &rect_life, DT_LEFT, d3d::BLACK);
+
+				RECT rect_point = { 10, 30, Width, Height };
+				std::wstring pointStr = L"Point: " + std::to_wstring(g_point.getPoint());
+				g_pFont->DrawTextW(NULL, pointStr.c_str(), -1, &rect_point, DT_LEFT, d3d::BLACK);
+			}
+			//life와 point 화면에 출력
+
+			if (g_sphere.size() == 2) {
+				for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
+					CSphere* s = *it;
+					it = g_sphere.erase(it);
+					delete s;
+				}
+				initializeSpheres();
+			}
 		}
-		for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end(); it++) {
-			(*it)->draw(Device, g_mWorld);
+		else {
+			if (g_pFont != NULL) {
+				RECT rect_life = { 400, 300, Width, Height };
+				std::wstring endStr = L"  Your final score is " + std::to_wstring(g_point.getPoint()) + L"\n" + L"Press Space to Restart";
+				g_pFont->DrawTextW(NULL, endStr.c_str(), -1, &rect_life, DT_LEFT, d3d::BLACK);
+			}
 		}
-		g_light.draw(Device);
 
 		Device->EndScene();
 		Device->Present(0, 0, 0, 0);
 		Device->SetTexture(0, NULL);
-
-		if (g_pFont != NULL) {
-			RECT rect_life = { 10, 10, Width, Height };
-			std::wstring lifeStr = L"Life: " + std::to_wstring(g_life.getLife());
-			g_pFont->DrawTextW(NULL, lifeStr.c_str(), -1, &rect_life, DT_LEFT, d3d::BLACK);
-
-			RECT rect_point = { 10, 10, Width, Height };
-			std::wstring pointStr = L"Point: " + std::to_wstring(g_point.getPoint());
-			g_pFont->DrawTextW(NULL, lifeStr.c_str(), -1, &rect_point, DT_LEFT, d3d::BLACK);
-		}
-		//life와 point 화면에 출력
-
-		if (g_life.isDead() || (g_point.getPoint() == g_sphere.size() - 2)) {
-			for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
-				CSphere* s = *it;
-				it = g_sphere.erase(it);
-				delete s;
-			}
-			g_point = Point();
-			g_life = Life();
-			initializeSpheres();
-		}
 	}
 	return true;
 }
@@ -880,11 +895,23 @@ LRESULT CALLBACK d3d::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		case VK_SPACE:
-			Bullet* bullet = dynamic_cast<Bullet*>(g_sphere.back());
-			// 스페이스 바를 눌렀을 때 처리
-			if (g_sphere.size() > 0 && bullet->getIsSpace()) {
-				// 가정: 총알은 g_sphere 벡터의 마지막 원소로 가정
-				bullet->shootPressed();
+			if (g_life.isDead()) {
+				for (vector<CSphere*>::iterator it = g_sphere.begin(); it != g_sphere.end();) {
+					CSphere* s = *it;
+					it = g_sphere.erase(it);
+					delete s;
+				}
+				g_point = Point();
+				g_life = Life();
+				initializeSpheres();
+			}
+			else {
+				Bullet* bullet = dynamic_cast<Bullet*>(g_sphere.back());
+				// 스페이스 바를 눌렀을 때 처리
+				if (g_sphere.size() > 0 && bullet->getIsSpace()) {
+					// 가정: 총알은 g_sphere 벡터의 마지막 원소로 가정
+					bullet->shootPressed();
+				}
 			}
 		}
 
